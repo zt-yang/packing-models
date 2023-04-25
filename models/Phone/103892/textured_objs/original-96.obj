@@ -1,0 +1,17 @@
+# SSTK version 0.8.0
+# 96
+mtllib original-96.mtl
+o mesh52/mesh52-geometry/material_13/component_5#mesh52-geometry
+v -0.009314 -0.146983 0.074324
+v 0.003782 -0.124300 0.074324
+v 0.016878 -0.146983 0.074324
+v 0.016878 -0.146983 0.074324
+v 0.003782 -0.124300 0.074324
+v -0.009314 -0.146983 0.074324
+vt 0 0
+vn 0 0 -1
+vn 0 0 1
+usemtl material_0_0
+f 1/1/1 2/1/1 3/1/1
+usemtl material_1_0
+f 4/1/2 5/1/2 6/1/2

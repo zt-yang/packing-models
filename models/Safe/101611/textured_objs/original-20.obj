@@ -1,0 +1,11 @@
+# SSTK version 0.8.0
+# 20
+mtllib original-20.mtl
+o mesh15/mesh15-geometry/material_1/component_1#mesh15-geometry
+v -0.030703 -0.176195 0.797169
+v -0.030044 -0.176394 0.797014
+v -0.032956 -0.179840 0.796320
+vt 0 0
+vn -0.13193005514061326 0.30156614535551557 -0.944273435253799
+usemtl material_0_0
+f 1/1/1 2/1/1 3/1/1

@@ -1,0 +1,11 @@
+link_0 hinge rotation_blade
+link_1 hinge rotation_blade
+link_2 hinge rotation_blade
+link_3 hinge rotation_blade
+link_4 hinge rotation_blade
+link_5 hinge rotation_blade
+link_6 hinge rotation_blade
+link_7 hinge rotation_blade
+link_8 hinge rotation_blade
+link_9 hinge rotation_blade
+link_10 free knife_body
