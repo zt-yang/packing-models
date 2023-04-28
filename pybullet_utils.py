@@ -288,8 +288,9 @@ def get_aabb(c, body: int, link: int = None):
 
 def draw_fitted_box(c, body, link=None, draw_box=False, draw_centroid=False,
                     draw_points=False, verbose=False, **kwargs):
-    body_pose = get_model_pose(c, body, link=link, verbose=verbose)
+    body_pose = get_model_pose(c.client_id, body, link=link, verbose=verbose)
     vertices = get_model_points(c, body, link=link, draw_all_points=draw_points, body_pose=body_pose)
+    c = c.client_id
 
     ## form the aabb
     if link is None:

@@ -1,27 +1,6 @@
 <?xml version="1.0" ?>
 <robot name="partnet_d2200aed9cbb4cacb38d5f389c7b61db">
 	<link name="base"/>
-	<link name="link_0">
-		<visual name="rotation_lid-1">
-			<origin xyz="-0.8025029999999997 -0.0266951857010922 0.3346915150998613"/>
-			<geometry>
-				<mesh filename="textured_objs/original-494.obj"/>
-			</geometry>
-		</visual>
-		<collision>
-			<origin xyz="-0.8025029999999997 -0.0266951857010922 0.3346915150998613"/>
-			<geometry>
-				<mesh filename="textured_objs/original-494.obj"/>
-			</geometry>
-		</collision>
-	</link>
-	<joint name="joint_0" type="revolute">
-		<origin xyz="0.8025029999999997 0.0266951857010922 -0.3346915150998613"/>
-		<axis xyz="-1 0 0"/>
-		<child link="link_0"/>
-		<parent link="link_1"/>
-		<limit lower="-0.5759586531581288" upper="2.5132741228718345"/>
-	</joint>
 	<link name="link_1">
 		<visual name="base_body-2">
 			<origin xyz="0 0 0"/>

@@ -5,9 +5,11 @@ import numpy as np
 from functools import lru_cache
 import json
 import pybullet_planning as pp
+import pybullet as p
 
 
 from .pybullet_utils import add_text, draw_fitted_box, get_aabb, draw_points
+from hacl.engine.bullet.world import JointState
 
 
 CATEGORIES_BOX = ["Phone", "Remote", "StaplerFlat", "USBFlat", "Bowl", "Cup", "Mug"]
@@ -27,8 +29,8 @@ models = {
     "Remote": {
         'models': ['100269', '100270', '100392', '100394',
                    '100809', '100819', '100997', '101034'],
-        'length-range': [0.23, 0.25],
-        'width-range': [0, 0.08],
+        'length-range': [0.22, 0.24],
+        'width-range': [0, 0.06],
     },
     "StaplerFlat": {
         'models': ['103095', '103104', '103271', '103273', '103280',
@@ -64,51 +66,57 @@ models = {
     "Camera": {
         'models': ['101352', '102417', '102434', '102536', '102852',
                    '102873', '102890'],
-        'height-range': [0.2, 0.5],
+        'height-range': [0.1, 0.12],
     },
     "FoldingKnife": {
-        'models': ['101068', '101079', '101107', '101108', '101245',
-                   '103740'],
+        'models': ['101068', '101079', '101107', '101245', '103740'],
+        'length-range': [0.06, 0.12],
+        'width-range': [0.06, 0.12],
     },
     "Pliers": {
         'models': ['100144', '100146', '100179', '100182', '102243',
                    '102288'],
+        'length-range': [0.15, 0.17],
     },
     "Scissors": {
-        'models': ['10495', '10502', '10537', '10546', '10567',
-                   '11021', '11029'],
+        'models': ['10495', '10502', '10537', '10567', '11021', '11029'],
+        'length-range': [0.13, 0.15],
     },
     "USB": {
         'models': ['100086', '100109', '100082', '100078', '100065',
                    '101999', '102008'],
-
+        'length-range': [0.05, 0.07],
     },
 
     ## --------------- SIDE_GRASP --------------- ##
     "Eyeglasses": {
         'models': ['101284', '101287', '101293', '101291', '101303',
                    '101326', '101328', '101838'],
+        'length-range': [0.1, 0.12],
     },
     "Stapler": {
-        'models': ['102990', '103099', '103113', '103283', '103299',
-                   '103307'],
+        'models': ['102990', '103099', '103113', '103283', '103299', '103307'],
+        'length-range': [0.18, 0.2],
     },
     "OpenedBottle": {
-        'models': ['3574', '3571', '3593', '3763', '3517', '3868',
+        'models': ['3574', '3571', '3763', '3517', '3868',
                    '3830', '3990', '4043'],
-
+        'length-range': [0.04, 0.06],
     },
     "Dispenser": {
         'models': ['101458', '101517', '101533', '101563', '103397',
                    '103416'],
+        'length-range': [0.04, 0.06],
     },
 
     ## --------------- FOLDED_CONTAINER --------------- ##
     "Suitcase": {
-        'models': ['100550', '100767', '101668', '103755', '103761']
+        'models': ['100550', '100767', '101668', '103755', '103761'],
+        'y-range': [0.3, 0.4],
     },
     "Box": {
-        'models': ['100426', '100767', '100154', '100247', '100243']
+        'models': ['100426', '100154', '100243'],  ## '100247',
+        'y-range': [0.3, 0.4],
     },
 
     ## --------------- FOLDED_CONTAINER --------------- ##
@@ -152,17 +160,18 @@ def get_model_scale_from_constraint(c, category, model_id):
     """ get the scale according to height_range, length_range (longer side), and width_range (shorter side) """
     model_path = get_model_path(category, model_id)
     extent = get_model_natural_extent(c, model_path)
-    if extent[0] > extent[1]:
-        keys = ['length-range', 'width-range', 'height-range']
-    else:
-        keys = ['width-range', 'length-range', 'height-range']
+    keys = {'length-range': 0, 'width-range': 1, 'height-range': 2, 'x-range': 0, 'y-range': 1}
+    if extent[0] < extent[1]:
+        keys.update({
+            'length-range': 1, 'width-range': 0
+        })
     criteria = [k for k in models[category] if k in keys]
     if len(criteria) == 0:
         return 1
 
     scale_range = [-np.inf, np.inf]
     for k in criteria:
-        r = [models[category][k][i] / extent[keys.index(k)] for i in range(2)]
+        r = [models[category][k][i] / extent[keys[k]] for i in range(2)]
         scale_range[0] = max(scale_range[0], r[0])
         scale_range[1] = min(scale_range[1], r[1])
     scale = np.random.uniform(*scale_range)
@@ -186,7 +195,22 @@ def load_asset_to_pdsketch(c, category, model_id, floor=None, **kwargs):
 
         body = c.load_urdf(model_path, pos=pos, body_name=name, scale=scale, **kwargs)
 
-    draw_fitted_box(c.client_id, body, draw_box=True, draw_centroid=False, draw_points=False)
+    ## open suitcases
+    if category in ['Suitcase', 'Box']:
+        for ji in c.w.get_joint_info_by_body(body):
+            j = ji.joint_index
+            if ji.joint_type == p.JOINT_REVOLUTE:
+                pstn = 1.57
+                if category == 'Suitcase':
+                    pstn = ji.joint_lower_limit+1.57
+                elif category == 'Box':
+                    if model_id == '100426':
+                        pstn = 1.46
+                    if model_id == '100154':
+                        pstn = 0.8
+                c.w.set_joint_state_by_id(body, j, JointState(pstn, 0))
+
+    draw_fitted_box(c, body, draw_box=True, draw_centroid=False, draw_points=False)
     add_text(c.client_id, name, body)
     return body
 
