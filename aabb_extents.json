@@ -558,5 +558,225 @@
         0.7590899901390086,
         1.4899400310516362,
         1.138426019430161
+    ],
+    "Bandu/skewed half cylinder/skewed half cylinder.urdf": [
+        0.09253505146503449,
+        0.04259165930002928,
+        0.1639049974679947
+    ],
+    "Bandu/hershey top cut off/hershey top cut off.urdf": [
+        0.09429600363969803,
+        0.0940809985101223,
+        0.07046699984371663
+    ],
+    "Bandu/Big Ring/Big Ring.urdf": [
+        0.11836799880862237,
+        0.11844199797511101,
+        0.045721000939607626
+    ],
+    "Bandu/Knight Shape/Knight Shape.urdf": [
+        0.08482300019264222,
+        0.05198399996757508,
+        0.14371599903702736
+    ],
+    "Bandu/triangular wedge/triangular wedge.urdf": [
+        0.047358999907970434,
+        0.08124199783802033,
+        0.16667199781537057
+    ],
+    "Bandu/Bandu Block/Bandu Block.urdf": [
+        0.0814392221570015,
+        0.045586920291185384,
+        0.17342533445358277
+    ],
+    "Bandu/flat top pencil/flat top pencil.urdf": [
+        0.057508540287613874,
+        0.057508540287613874,
+        0.19445665454864502
+    ],
+    "Bandu/Skewed Triangular Prism/Skewed Triangular Prism.urdf": [
+        0.08787521994113923,
+        0.0769117315709591,
+        0.09211908927559853
+    ],
+    "Bandu/Pencil/Pencil.urdf": [
+        0.057383659243583685,
+        0.05743232084810734,
+        0.19519464945793152
+    ],
+    "Bandu/mushroom/mushroom.urdf": [
+        0.06725999987125397,
+        0.06725999987125397,
+        0.14018599963188172
+    ],
+    "Bandu/Skewed Rectangular Prism/Skewed Rectangular Prism.urdf": [
+        0.08126587694883347,
+        0.048287819087505346,
+        0.16309304809570313
+    ],
+    "Bandu/cylinder with hole/cylinder with hole.urdf": [
+        0.08310099965333939,
+        0.08301299712061883,
+        0.09013200080394745
+    ],
+    "Bandu/hershey/hershey.urdf": [
+        0.0862920013666153,
+        0.08608600026369095,
+        0.08411999879777432
+    ],
+    "Bandu/Egg v2/Egg v2.urdf": [
+        0.07660234248638154,
+        0.07649880176782609,
+        0.10645440867543221
+    ],
+    "Bandu/Skewed Cylinder - v2/Skewed Cylinder - v2.urdf": [
+        0.059331598639488226,
+        0.09122778004407883,
+        0.11600289767980576
+    ],
+    "Bandu/half sphere/half sphere.urdf": [
+        0.10604892200231553,
+        0.1059021977186203,
+        0.05602447031438351
+    ],
+    "Bandu/Double Wedge/Double Wedge.urdf": [
+        0.09289500018954278,
+        0.0817720023393631,
+        0.08188399946689606
+    ],
+    "Bandu/scallop/scallop.urdf": [
+        0.10810886970162392,
+        0.10795910930633545,
+        0.0540264499783516
+    ],
+    "Bandu/half pencil/half pencil.urdf": [
+        0.057508540287613874,
+        0.05750854960083962,
+        0.19445664709806443
+    ],
+    "Bandu/Skewed Wedge/Skewed Wedge.urdf": [
+        0.08905799961090088,
+        0.08877899771928788,
+        0.07854499942064286
+    ],
+    "Bandu/bowling pin/bowling pin.urdf": [
+        0.0635850009918213,
+        0.06359399943053723,
+        0.15591600066423417
+    ],
+    "Bandu/sundisk/sundisk.urdf": [
+        0.10764299979805947,
+        0.10762400081753731,
+        0.05432400009036065
+    ],
+    "engmikedset/block/block.urdf": [
+        0.058002098411321645,
+        0.07533611631393433,
+        0.14467223262786866
+    ],
+    "engmikedset/rounded_bobble/rounded_bobble.urdf": [
+        0.07968062809109688,
+        0.07968063926696778,
+        0.09810078790783883
+    ],
+    "engmikedset/L_Chamfered/L_Chamfered.urdf": [
+        0.07315199910104275,
+        0.07328300079703332,
+        0.11447900435328484
+    ],
+    "engmikedset/rectangular_solid/rectangular_solid.urdf": [
+        0.053914199531078344,
+        0.053914199531078344,
+        0.2237918255329132
+    ],
+    "engmikedset/J_Block/J_Block.urdf": [
+        0.04761099903285504,
+        0.1027019982635975,
+        0.13601899793744088
+    ],
+    "engmikedset/cone+Ball/cone+Ball.urdf": [
+        0.06752699887752533,
+        0.06752600049972535,
+        0.13950100442767144
+    ],
+    "engmikedset/cross/cross.urdf": [
+        0.08560999757051468,
+        0.08536899736523629,
+        0.08560999757051468
+    ],
+    "engmikedset/cylinder_long/cylinder_long.urdf": [
+        0.05390883883833886,
+        0.05391495949029923,
+        0.22381274676322938
+    ],
+    "engmikedset/cross_round_Top/cross_round_Top.urdf": [
+        0.09180200001597405,
+        0.09179700067639351,
+        0.07444499707221985
+    ],
+    "engmikedset/foundation/foundation.urdf": [
+        0.04568502022325993,
+        0.08537005907297135,
+        0.1647400883436203
+    ],
+    "engmikedset/Barrell/Barrell.urdf": [
+        0.07939476048946381,
+        0.07939474931359292,
+        0.09881966090202332
+    ],
+    "engmikedset/wedge_long/wedge_long.urdf": [
+        0.10236302292346955,
+        0.04386841034889222,
+        0.14301953366398812
+    ],
+    "engmikedset/Nut/Nut.urdf": [
+        0.10909799760580063,
+        0.060192001000046735,
+        0.09640899947285653
+    ],
+    "engmikedset/Vase_W_Hole/Vase_W_Hole.urdf": [
+        0.08722500032186509,
+        0.08722099936008454,
+        0.08247199928760529
+    ],
+    "engmikedset/cone/cone.urdf": [
+        0.07306010177731515,
+        0.07307155704498292,
+        0.11716482317447663
+    ],
+    "engmikedset/wedge_short_stout/wedge_short_stout.urdf": [
+        0.11043760827183724,
+        0.05903792096674443,
+        0.09626650339365006
+    ],
+    "engmikedset/Bridge/Bridge.urdf": [
+        0.07561600109934807,
+        0.05828200182318688,
+        0.1449489993453026
+    ],
+    "engmikedset/pentagram_stout/pentagram_stout.urdf": [
+        0.1300924894809723,
+        0.04004457867145539,
+        0.12435223063826562
+    ],
+    "engmikedset/cylinder_parallogram/cylinder_parallogram.urdf": [
+        0.06482775969803334,
+        0.09996164119243622,
+        0.09645594185590745
+    ],
+    "engmikedset/Pyramid_W_Eye/Pyramid_W_Eye.urdf": [
+        0.09339999681711197,
+        0.09339300072193146,
+        0.07172800129652024
+    ],
+    "engmikedset/Egg/Egg.urdf": [
+        0.0797537294626236,
+        0.07979040122032166,
+        0.09787263995409012
+    ],
+    "Safe/101363/mobility.urdf": [
+        1.211763961791993,
+        1.1427400546073918,
+        1.3048450188636784
     ]
 }

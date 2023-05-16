@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <robot name="partnet_019dff2f-8207-4ddf-8255-871060cd4bf6">
 	<link name="base"/>
-	<link name="link_0">
+	<!--link name="link_0">
 		<visual name="door-1">
 			<origin xyz="0.4585415 0 -0.5808095"/>
 			<geometry>
@@ -65,7 +65,7 @@
 		<axis xyz="0 0 1"/>
 		<child link="link_1"/>
 		<parent link="link_0"/>
-	</joint>
+	</joint-->
 	<link name="link_2">
 		<visual name="base_body-6">
 			<origin xyz="0 0 0"/>
@@ -79,7 +79,8 @@
 				<mesh filename="textured_objs/original-3.obj"/>
 			</geometry>
 		</visual>
-		<visual name="base_body-6">
+
+		<!--visual name="base_body-6">
 			<origin xyz="0 0 0"/>
 			<geometry>
 				<mesh filename="textured_objs/original-1.obj"/>
@@ -101,6 +102,67 @@
 			<origin xyz="0 0 0"/>
 			<geometry>
 				<mesh filename="textured_objs/original-1.obj"/>
+			</geometry>
+		</collision-->
+
+		<collision>
+			<origin xyz="0 0 0"/>
+			<geometry>
+				<mesh filename="textured_objs/original-4-top.obj"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="0 0 0"/>
+			<geometry>
+				<mesh filename="textured_objs/original-4-bottom.obj"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="0 0 0"/>
+			<geometry>
+				<mesh filename="textured_objs/original-4-back.obj"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="0 0 0"/>
+			<geometry>
+				<mesh filename="textured_objs/original-4-left.obj"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="0 0 0"/>
+			<geometry>
+				<mesh filename="textured_objs/original-4-right.obj"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="0 0 0"/>
+			<geometry>
+				<mesh filename="textured_objs/original-3-top.obj"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="0 0 0"/>
+			<geometry>
+				<mesh filename="textured_objs/original-3-bottom.obj"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="0 0 0"/>
+			<geometry>
+				<mesh filename="textured_objs/original-3-back.obj"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="0 0 0"/>
+			<geometry>
+				<mesh filename="textured_objs/original-3-left.obj"/>
+			</geometry>
+		</collision>
+		<collision>
+			<origin xyz="0 0 0"/>
+			<geometry>
+				<mesh filename="textured_objs/original-3-right.obj"/>
 			</geometry>
 		</collision>
 	</link>
