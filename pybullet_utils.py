@@ -558,7 +558,7 @@ def add_grasp_in_db(db, db_file, instance_name, grasps, name=None, scale=None):
 
 def set_gripper_pose(c, body, robot, grasp_pose, try_length=False):
     pose = c.w.get_body_state_by_id(body)[:2]
-    lengths = [-0.01, 0, 0.01, 0.02, 0.04] if try_length else [0]
+    lengths = [0] if try_length else [0]
     for dz in lengths:
         result = True
         new_point = np.array(grasp_pose[0])
@@ -598,16 +598,15 @@ def set_gripper_pose(c, body, robot, grasp_pose, try_length=False):
         
         finding other symmetrically grasp poses:
             gg = pp.multiply(g, (pp.unit_point(), pp.quat_from_euler((0, np.pi/4, 0))))
-            ggg = ((-0.04, 0.0, 0.036), pp.quat_from_euler((-2.356, 0.0, -1.571)))
-            ggg = ((0, -0.04, 0.036), pp.quat_from_euler((2.356, 0, 3.1415)))
-            pick_pose = pp.multiply(pose, ggg)
-            pick_pose = pp.multiply(pose, pp.multiply(g, (pp.unit_point(), pp.quat_from_euler((0, np.pi/4, 0)))))
+            gg = ((-0.04, 0.0, 0.036), pp.quat_from_euler((-2.356, 0.0, -1.571)))
+            gg = ((0, -0.04, 0.036), pp.quat_from_euler((2.356, 0, 3.1415)))
+            pick_pose = pp.multiply(pose, gg)
             colliding = robot.is_colliding(robot.ikfast(pick_pose[0], pick_pose[1], error_on_fail=False))
         
         for finding partnet name
             p.getBodyInfo(body, c.client_id)[1]
-            nice(g)
             get_loaded_scale(c.client_id, body)
+            add_grasp_in_db(db, db_file, instance_name, [gg], name=c.w.get_body_name(body), scale=scale)
         """
         # colliding = c.w.get_contact(robot.panda)
         # colliding = [c for c in colliding if c.body_b != robot.panda]

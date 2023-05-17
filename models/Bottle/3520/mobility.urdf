@@ -2,6 +2,16 @@
 <robot name="partnet_2722bec1947151b86e22e2d2f64c8cef">
 	<link name="base"/>
 	<link name="link_0">
+        <contact>
+          <lateral_friction value="1"/>
+          <rolling_friction value="0.0001"/>
+          <inertia_scaling value="3.0"/>
+        </contact>
+        <inertial>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+           <mass value="0.2"/>
+           <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+        </inertial>
 		<visual name="lid-7">
 			<origin xyz="0.0061709309079649236 0 0.0014824999999999977"/>
 			<geometry>
@@ -15,13 +25,33 @@
 			</geometry>
 		</collision>
 	</link>
-	<joint name="joint_0" type="continuous">
+	<joint name="joint_0" type="fixed">
 		<origin xyz="0.0 0 0.0"/>
 		<axis xyz="0 1 0"/>
 		<child link="link_0"/>
 		<parent link="link_0_helper"/>
 	</joint>
+        <contact>
+          <lateral_friction value="1"/>
+          <rolling_friction value="0.0001"/>
+          <inertia_scaling value="3.0"/>
+        </contact>
+        <inertial>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+           <mass value="0.2"/>
+           <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+        </inertial>
 	<link name="link_1">
+        <contact>
+          <lateral_friction value="1"/>
+          <rolling_friction value="0.0001"/>
+          <inertia_scaling value="3.0"/>
+        </contact>
+        <inertial>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+           <mass value="0.2"/>
+           <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+        </inertial>
 		<visual name="body-5">
 			<origin xyz="0 0 0"/>
 			<geometry>
@@ -53,7 +83,7 @@
 		<parent link="base"/>
 	</joint>
 	<link name="link_0_helper"/>
-	<joint name="joint_2" type="prismatic">
+	<joint name="joint_2" type="fixed">
 		<origin xyz="-0.0061709309079649236 0 -0.0014824999999999977"/>
 		<axis xyz="0 1 0"/>
 		<child link="link_0_helper"/>

@@ -16,7 +16,7 @@ MODEL_PATH = abspath(join(dirname(abspath(__file__)), 'models'))
 CATEGORIES_BOX = ["Phone", "Remote", "StaplerFlat", "USBFlat", "Bowl", "Cup", "Mug"]
 CATEGORIES_TALL = ["Bottle"]
 CATEGORIES_NON_CONVEX = ["Camera", "FoldingKnife", "Pliers", "Scissors", "USB"]
-CATEGORIES_SIDE_GRASP = ["Eyeglasses", "Stapler", "OpenedBottle", "Dispenser"]
+CATEGORIES_SIDE_GRASP = ["Eyeglasses", "Stapler", "BottleOpened", "Dispenser"]
 CATEGORIES_FOLDED_CONTAINER = ["Suitcase", "Box"]
 CATEGORIES_OPENED_SPACE = ["Safe"]
 CATEGORIES_BANDU = ["Bandu", "engmikedset"]  ##
@@ -68,7 +68,7 @@ models = {
     "Camera": {
         'models': ['101352', '102417', '102434', '102536', '102852',
                    '102873', '102890'],
-        'height-range': [0.1, 0.12],
+        'height-range': [0.09, 0.11],
     },
     "FoldingKnife": {
         'models': ['101068', '101079', '101107', '101245', '103740'],
@@ -78,11 +78,11 @@ models = {
     "Pliers": {
         'models': ['100144', '100146', '100179', '100182', '102243',
                    '102288'],
-        'length-range': [0.15, 0.17],
+        'length-range': [0.18, 0.2],
     },
     "Scissors": {
         'models': ['10495', '10502', '10537', '10567', '11021', '11029'],
-        'length-range': [0.13, 0.15],
+        'length-range': [0.18, 0.2],
     },
     "USB": {
         'models': ['100086', '100109', '100082', '100078', '100065',
@@ -100,7 +100,7 @@ models = {
         'models': ['102990', '103099', '103113', '103283', '103299', '103307'],
         'length-range': [0.18, 0.2],
     },
-    "OpenedBottle": {
+    "BottleOpened": {
         'models': ['3574', '3571', '3763', '3517', '3868',
                    '3830', '3990', '4043'],
         'length-range': [0.04, 0.06],
