@@ -224,11 +224,14 @@ def load_asset_to_pdsketch(c, category, model_id, name=None, floor=None, draw_bb
         scale = sample_model_scale_from_constraint(c, category, model_id)
 
         pos = kwargs.pop('pos', (0, 0, 0))
+        quat = (0, 0, 0, 1)
+        if len(pos) == 2 and isinstance(pos[0], tuple):
+            pos, quat = pos
         if floor is not None:
             extent = get_model_natural_extent(c, model_path)
             pos = list(pos[:2]) + [get_aabb(c.client_id, floor).upper[2] + extent[2] * scale / 2 + gap]
 
-        body = c.load_urdf(model_path, pos=pos, body_name=name, scale=scale, **kwargs)
+        body = c.load_urdf(model_path, pos=pos, quat=quat, body_name=name, scale=scale, **kwargs)
         if floor is not None:
             bottom_to_ceter = bottom_to_center(c.client_id, body) + gap
             pose = get_pose(c.client_id, body)

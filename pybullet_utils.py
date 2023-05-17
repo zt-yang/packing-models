@@ -558,7 +558,7 @@ def add_grasp_in_db(db, db_file, instance_name, grasps, name=None, scale=None):
 
 def set_gripper_pose(c, body, robot, grasp_pose, try_length=False):
     pose = c.w.get_body_state_by_id(body)[:2]
-    lengths = [-0.01, 0, 0.01, 0.02, 0.03, 0.04] if try_length else [0]
+    lengths = [-0.01, 0, 0.01, 0.02, 0.04] if try_length else [0]
     for dz in lengths:
         result = True
         new_point = np.array(grasp_pose[0])
@@ -605,7 +605,7 @@ def set_gripper_pose(c, body, robot, grasp_pose, try_length=False):
             colliding = robot.is_colliding(robot.ikfast(pick_pose[0], pick_pose[1], error_on_fail=False))
         
         for finding partnet name
-            p.getBodyInfo(body, c.client_id)
+            p.getBodyInfo(body, c.client_id)[1]
             nice(g)
             get_loaded_scale(c.client_id, body)
         """
