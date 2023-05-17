@@ -46,7 +46,7 @@ models = {
     },
     "Bowl": {
         'models': ['7000', '7001', '7002', '7003', '7004'],
-        'length-range': [0.07, 0.17],
+        'length-range': [0.15, 0.17],
     },
     "Cup": {
         'models': ['7004', '7005', '7006', '7007'],
@@ -54,7 +54,7 @@ models = {
     },
     "Mug": {
         'models': ['7008', '7009', '7010', '7011'],
-        'length-range': [0.05, 0.07],
+        'length-range': [0.07, 0.09],
     },
 
     ## --------------- TALL --------------- ##
@@ -108,7 +108,7 @@ models = {
     "Dispenser": {
         'models': ['101458', '101517', '101533', '101563', '103397',
                    '103416'],
-        'length-range': [0.04, 0.06],
+        'length-range': [0.05, 0.07],
     },
 
     ## --------------- FOLDED_CONTAINER --------------- ##
@@ -183,7 +183,7 @@ def get_model_natural_extent(c, model_path):
     return data[model_name]
 
 
-def get_model_scale_from_constraint(c, category, model_id):
+def sample_model_scale_from_constraint(c, category, model_id):
     """ get the scale according to height_range, length_range (longer side), and width_range (shorter side) """
     if category not in models:
         return 1
@@ -220,16 +220,17 @@ def load_asset_to_pdsketch(c, category, model_id, name=None, floor=None, draw_bb
     print('load_asset_to_pdsketch.loading', name)
 
     with c.disable_rendering():
-        scale = get_model_scale_from_constraint(c, category, model_id)
+        gap = 0.01
+        scale = sample_model_scale_from_constraint(c, category, model_id)
 
         pos = kwargs.pop('pos', (0, 0, 0))
         if floor is not None:
             extent = get_model_natural_extent(c, model_path)
-            pos = list(pos[:2]) + [get_aabb(c.client_id, floor).upper[2] + extent[2] * scale / 2]
+            pos = list(pos[:2]) + [get_aabb(c.client_id, floor).upper[2] + extent[2] * scale / 2 + gap]
 
         body = c.load_urdf(model_path, pos=pos, body_name=name, scale=scale, **kwargs)
         if floor is not None:
-            bottom_to_ceter = bottom_to_center(c.client_id, body)
+            bottom_to_ceter = bottom_to_center(c.client_id, body) + gap
             pose = get_pose(c.client_id, body)
             pose = (list(pose[0][:2]) + [get_aabb(c.client_id, floor).upper[2] + bottom_to_ceter], pose[1])
             set_pose(c.client_id, body, pose)

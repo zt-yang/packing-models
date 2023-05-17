@@ -217,6 +217,18 @@ def get_aabb(cid, body: int, link: int = None):
     return pp.AABB(*p.getAABB(body, linkIndex=link, physicsClientId=cid))
 
 
+def remove_debug(cid, debug):
+    p.removeUserDebugItem(debug, physicsClientId=cid)
+
+
+remove_handle = remove_debug
+
+
+def remove_handles(cid, handles):
+    for handle in handles:
+        remove_debug(cid, handle)
+
+
 def draw_fitted_box(cid, body, link=None, draw_box=False, draw_centroid=False,
                     draw_points=False, verbose=False, **kwargs):
     body_pose = get_model_pose(cid, body, link=link, verbose=verbose)
@@ -406,6 +418,17 @@ def get_datetime(year=True):
     return datetime.now().strftime(form)
 
 
+def draw_pose(cid, pose, length=0.1, d=3, **kwargs):
+    origin_world = pp.tform_point(pose, np.zeros(3))
+    handles = []
+    for k in range(d):
+        axis = np.zeros(3)
+        axis[k] = 1
+        axis_world = pp.tform_point(pose, length*axis)
+        handles.append(add_line(cid, origin_world, axis_world, color=axis, **kwargs))
+    return handles
+
+
 def aabb_from_extent_center(extent, center=None):
     if center is None:
         center = np.zeros(len(extent))
@@ -535,11 +558,11 @@ def add_grasp_in_db(db, db_file, instance_name, grasps, name=None, scale=None):
 
 def set_gripper_pose(c, body, robot, grasp_pose, try_length=False):
     pose = c.w.get_body_state_by_id(body)[:2]
-    lengths = [-0.01, 0, 0.01, 0.02, 0.03] if try_length else [0]
+    lengths = [-0.01, 0, 0.01, 0.02, 0.03, 0.04] if try_length else [0]
     for dz in lengths:
         result = True
         new_point = np.array(grasp_pose[0])
-        which_dim = np.argmax(np.abs(new_point))
+        which_dim = np.where(np.abs(new_point) != 0)
         new_point[which_dim] -= np.sign(new_point[which_dim]) * dz
         grasp = (new_point.tolist(), grasp_pose[1])
         pick_pose = pp.multiply(pose, grasp)
@@ -555,6 +578,37 @@ def set_gripper_pose(c, body, robot, grasp_pose, try_length=False):
         colliding = robot.is_colliding(pick_q)
         if colliding:
             continue
+        """ 
+        add the following to urdf:
+        <contact>
+          <lateral_friction value="1"/>
+          <rolling_friction value="0.0001"/>
+          <inertia_scaling value="3.0"/>
+        </contact>
+        <inertial>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+           <mass value="0.2"/>
+           <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+        </inertial>
+        
+        for finding strange grasp poses:
+            g = pp.multiply(((0.04, 0, 0.036), (0.5, -0.5, -0.5, 0.5)), (pp.unit_point(), pp.quat_from_euler((np.pi/4, 0, 0))))
+            pick_pose = pp.multiply(pose, g)
+            colliding = robot.is_colliding(robot.ikfast(pick_pose[0], pick_pose[1], error_on_fail=False))
+        
+        finding other symmetrically grasp poses:
+            gg = pp.multiply(g, (pp.unit_point(), pp.quat_from_euler((0, np.pi/4, 0))))
+            ggg = ((-0.04, 0.0, 0.036), pp.quat_from_euler((-2.356, 0.0, -1.571)))
+            ggg = ((0, -0.04, 0.036), pp.quat_from_euler((2.356, 0, 3.1415)))
+            pick_pose = pp.multiply(pose, ggg)
+            pick_pose = pp.multiply(pose, pp.multiply(g, (pp.unit_point(), pp.quat_from_euler((0, np.pi/4, 0)))))
+            colliding = robot.is_colliding(robot.ikfast(pick_pose[0], pick_pose[1], error_on_fail=False))
+        
+        for finding partnet name
+            p.getBodyInfo(body, c.client_id)
+            nice(g)
+            get_loaded_scale(c.client_id, body)
+        """
         # colliding = c.w.get_contact(robot.panda)
         # colliding = [c for c in colliding if c.body_b != robot.panda]
         # if len(colliding) > 0:
@@ -575,16 +629,15 @@ def set_gripper_pose(c, body, robot, grasp_pose, try_length=False):
 
 
 def get_grasp_poses(c, robot, body, instance_name='test', link=None, grasp_length=0.02,
-                    HANDLE_FILTER=False,
-                    visualize=False, RETAIN_ALL=False, verbose=True,
-                    collisions=False):
+                    HANDLE_FILTER=False, visualize=False, verbose=True, faces=None):
+    cid = c.client_id
     body_name = (body, link) if link is not None else body
     title = f'bullet_utils.get_hand_grasps({body_name}) | '
     dist = grasp_length
-    scale = get_loaded_scale(c.client_id, body)
+    scale = get_loaded_scale(cid, body)
     print("get hand grasps scale", scale)
 
-    body_pose = get_model_pose(c.client_id, body, link=link, verbose=verbose)
+    body_pose = get_model_pose(cid, body, link=link, verbose=verbose)
     print("get hand grasps, body pose", body_pose)
 
     if link is None:  ## grasp the whole body
@@ -606,16 +659,19 @@ def get_grasp_poses(c, robot, body, instance_name='test', link=None, grasp_lengt
             # wait_unlocked()
             for b in bodies:
                 pp.remove_body(b)
-        # pp.remove_handles(handles)
+        # remove_handles(cid, handles)
         return found
 
-    aabb, handles = draw_fitted_box(c.client_id, body, link=link, verbose=verbose, draw_box=True, draw_centroid=True)
+    aabb, handles = draw_fitted_box(cid, body, link=link, verbose=verbose, draw_box=True, draw_centroid=True)
 
     ## get the points in hand frame to be transformed to the origin of object frame in different directions
     center = pp.get_aabb_center(aabb)
     w, l, h = dimensions = pp.get_aabb_extent(aabb)
-    faces = [(w/2+dist, 0, 0), (0, l/2+dist, 0), (0, 0, h/2+dist)]
-    faces += [minus(0, f) for f in faces]
+    if faces is None:
+        faces = [(w/2+dist, 0, 0), (0, l/2+dist, 0), (0, 0, h/2+dist)]
+        faces += [minus(0, f) for f in faces]
+    else:
+        faces = [(np.array(f) * np.array((w/2+dist, l/2+dist, h/2+dist))).tolist() for f in faces]
 
     ## for finding the longest dimension
     max_value = max(dimensions)
@@ -666,7 +722,7 @@ def get_grasp_poses(c, robot, body, instance_name='test', link=None, grasp_lengt
 
     ## lastly store the newly sampled grasps
     add_grasp_in_db(db, db_file, instance_name, grasps, name=c.w.get_body_name(body), scale=scale)
-    pp.remove_handles(handles)
+    remove_handles(cid, handles)
     # if len(grasps) > num_samples:
     #     random.shuffle(grasps)
     #     return grasps[:num_samples]
