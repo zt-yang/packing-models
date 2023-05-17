@@ -2,6 +2,16 @@
 <robot name="partnet_1065a548dee0058d89cf6a343602477f">
 	<link name="base"/>
 	<link name="link_0">
+        <contact>
+          <lateral_friction value="1"/>
+          <rolling_friction value="0.0001"/>
+          <inertia_scaling value="3.0"/>
+        </contact>
+        <inertial>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+           <mass value="0.2"/>
+           <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+        </inertial>
 		<visual name="leg-1">
 			<origin xyz="-0.6682690913230187 0 -0.09310087148658952"/>
 			<geometry>
@@ -39,7 +49,7 @@
 			</geometry>
 		</collision>
 	</link>
-	<joint name="joint_0" type="revolute">
+	<joint name="joint_0" type="fixed">
 		<origin xyz="0.6682690913230187 0 0.09310087148658952"/>
 		<axis xyz="0 1 0"/>
 		<child link="link_0"/>
@@ -47,6 +57,16 @@
 		<limit lower="0.0" upper="1.3962634015954636"/>
 	</joint>
 	<link name="link_1">
+        <contact>
+          <lateral_friction value="1"/>
+          <rolling_friction value="0.0001"/>
+          <inertia_scaling value="3.0"/>
+        </contact>
+        <inertial>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+           <mass value="0.2"/>
+           <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+        </inertial>
 		<visual name="leg-2">
 			<origin xyz="0.6724743528813114 0 -0.09162359257228703"/>
 			<geometry>
@@ -84,7 +104,7 @@
 			</geometry>
 		</collision>
 	</link>
-	<joint name="joint_1" type="revolute">
+	<joint name="joint_1" type="fixed">
 		<origin xyz="-0.6724743528813114 0 0.09162359257228703"/>
 		<axis xyz="0 -1 0"/>
 		<child link="link_1"/>
@@ -92,6 +112,16 @@
 		<limit lower="-0.0" upper="1.3962634015954636"/>
 	</joint>
 	<link name="link_2">
+        <contact>
+          <lateral_friction value="1"/>
+          <rolling_friction value="0.0001"/>
+          <inertia_scaling value="3.0"/>
+        </contact>
+        <inertial>
+          <origin rpy="0 0 0" xyz="0 0 0"/>
+           <mass value="0.2"/>
+           <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
+        </inertial>
 		<visual name="base_body-3">
 			<origin xyz="0 0 0"/>
 			<geometry>
