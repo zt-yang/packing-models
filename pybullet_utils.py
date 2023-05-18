@@ -728,3 +728,6 @@ def get_grasp_poses(c, robot, body, instance_name='test', link=None, grasp_lengt
     return grasps  ##[:1]
 
 
+def draw_goal_pose(cid, body, pose_g, **kwargs):
+    aabb = aabb_from_extent_center(pp.get_aabb_extent(get_aabb(cid, body)), pose_g[0])
+    pp.draw_aabb(aabb, **kwargs)
