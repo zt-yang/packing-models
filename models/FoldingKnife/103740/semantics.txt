@@ -1,3 +1,0 @@
-link_0 hinge rotation_blade
-link_1 hinge rotation_blade
-link_2 free knife_body

@@ -1,4 +1,5 @@
 import os
+import random
 from os import listdir
 from os.path import isdir, join, abspath, isfile, dirname
 import shutil
@@ -8,7 +9,7 @@ import json
 import pybullet_planning as pp
 import pybullet as p
 
-from .pybullet_utils import add_text, draw_fitted_box, get_aabb, draw_points, get_pose, set_pose
+from pybullet_utils import add_text, draw_fitted_box, get_aabb, draw_points, get_pose, set_pose
 from hacl.engine.bullet.world import JointState
 
 MODEL_PATH = abspath(join(dirname(abspath(__file__)), 'models'))
@@ -130,10 +131,45 @@ models = {
 }
 
 
-def get_grasp_poses(category, model_id):
-    model_data = models[category]
-    if 'grasps' in model_data and model_id in model_data['grasps']:
-        return model_data['grasps'][model_id]
+@lru_cache(maxsize=None)
+def get_packing_assets(cats=None):
+    assets = {}
+    for cat, data in models.items():
+        if cats is not None and cat not in cats:
+            continue
+        for model_id in data['models']:
+            extent = np.array(get_model_natural_extent(get_model_path(cat, model_id)))
+            scale_range = np.array(get_model_scale_from_constraint(cat, model_id))
+            extent_range = np.outer(extent, scale_range)
+            area = np.prod(extent_range[:, 0])
+            assets[(cat, model_id)] = (extent_range, scale_range, extent, area)
+    ## sort assets by decreasing area
+    assets = {k: v[:3] for k, v in sorted(assets.items(), key=lambda x: x[1][-1], reverse=True)}
+    return assets
+
+
+def fit_object_assets(assets, region, padding=0.1):
+    """ return the fitted asset, sampled scale, and rotation """
+    b = 1 - padding
+    for identifier, (extent_range, scale_range, extent) in assets.items():
+        x_range, y_range = extent_range
+        ratio = x_range[0] / y_range[0]
+        if x_range[0] < region[3] and y_range[0] < region[4]:
+            scale_range[1] = min(scale_range[1], region[3] * b / ratio)
+            theta = random.choice([0, np.pi])
+        elif x_range[0] < region[4] and y_range[0] < region[3]:
+            scale_range[1] = min(scale_range[1], region[4] * b * ratio)
+            theta = random.choice([np.pi/2, -np.pi/2])
+        else:
+            continue
+        scale = np.random.uniform(scale_range[0], scale_range[1])
+        extent *= scale
+        x = region[0] + region[3] / 2
+        y = region[1] + region[4] / 2
+        z = extent[2] / 2
+        pose = ((x, y, z), pp.quat_from_euler((0, 0, theta)))
+        return identifier, scale, extent, pose
+    return None
 
 
 @lru_cache(maxsize=None)
@@ -165,7 +201,7 @@ def get_instance_name(path):
 
 
 @lru_cache(maxsize=None)
-def get_model_natural_extent(c, model_path):
+def get_model_natural_extent(model_path, c=None):
     """" store and load the aabb when scale = 1, so it's easier to scale according to given range """
     data_file = join(dirname(__file__), 'aabb_extents.json')
     if not isfile(data_file):
@@ -173,7 +209,7 @@ def get_model_natural_extent(c, model_path):
             json.dump({}, f)
     data = json.load(open(data_file, 'r'))
     model_name = model_path.replace(MODEL_PATH+'/', '')
-    if model_name not in data:
+    if model_name not in data and c is not None:
         body = c.load_urdf(model_path, (0, 0, 0), body_name='tmp')
         extent = pp.get_aabb_extent(get_aabb(c.client_id, body))
         data[model_name] = tuple(extent)
@@ -183,12 +219,12 @@ def get_model_natural_extent(c, model_path):
     return data[model_name]
 
 
-def sample_model_scale_from_constraint(c, category, model_id):
+def get_model_scale_from_constraint(category, model_id, c=None):
     """ get the scale according to height_range, length_range (longer side), and width_range (shorter side) """
     if category not in models:
-        return 1
+        return 1, 1
     model_path = get_model_path(category, model_id)
-    extent = get_model_natural_extent(c, model_path)
+    extent = get_model_natural_extent(model_path, c=c)
     keys = {'length-range': 0, 'width-range': 1, 'height-range': 2, 'x-range': 0, 'y-range': 1}
     if extent[0] < extent[1]:
         keys.update({
@@ -196,13 +232,18 @@ def sample_model_scale_from_constraint(c, category, model_id):
         })
     criteria = [k for k in models[category] if k in keys]
     if len(criteria) == 0:
-        return 1
+        return 1, 1
 
     scale_range = [-np.inf, np.inf]
     for k in criteria:
         r = [models[category][k][i] / extent[keys[k]] for i in range(2)]
         scale_range[0] = max(scale_range[0], r[0])
         scale_range[1] = min(scale_range[1], r[1])
+    return scale_range
+
+
+def sample_model_scale_from_constraint(category, model_id, c=None):
+    scale_range = get_model_scale_from_constraint(category, model_id, c)
     scale = np.random.uniform(*scale_range)
     return scale
 
@@ -211,7 +252,7 @@ def bottom_to_center(cid, body):
     return get_pose(cid, body)[0][2] - get_aabb(cid, body).lower[2]
 
 
-def load_asset_to_pdsketch(c, category, model_id, name=None, floor=None, draw_bb=False, **kwargs):
+def load_asset_to_pdsketch(c, category, model_id, scale=None, name=None, floor=None, draw_bb=False, **kwargs):
     """ load a model from the dataset into the bullet environment though PDSketch API """
     model_path = get_model_path(category, model_id)
 
@@ -221,14 +262,15 @@ def load_asset_to_pdsketch(c, category, model_id, name=None, floor=None, draw_bb
 
     with c.disable_rendering():
         gap = 0.01
-        scale = sample_model_scale_from_constraint(c, category, model_id)
+        if scale is None:
+            scale = sample_model_scale_from_constraint(category, model_id, c)
 
         pos = kwargs.pop('pos', (0, 0, 0))
         quat = (0, 0, 0, 1)
         if len(pos) == 2 and isinstance(pos[0], tuple):
             pos, quat = pos
         if floor is not None:
-            extent = get_model_natural_extent(c, model_path)
+            extent = get_model_natural_extent(model_path, c)
             pos = list(pos[:2]) + [get_aabb(c.client_id, floor).upper[2] + extent[2] * scale / 2 + gap]
 
         body = c.load_urdf(model_path, pos=pos, quat=quat, body_name=name, scale=scale, **kwargs)
