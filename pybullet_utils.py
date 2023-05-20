@@ -3,6 +3,7 @@ from os.path import isdir, join, abspath, isfile, dirname
 import shutil
 import sys
 import numpy as np
+import time
 import json
 import math
 import pybullet as p
@@ -731,3 +732,17 @@ def get_grasp_poses(c, robot, body, instance_name='test', link=None, grasp_lengt
 def draw_goal_pose(cid, body, pose_g, **kwargs):
     aabb = aabb_from_extent_center(pp.get_aabb_extent(get_aabb(cid, body)), pose_g[0])
     pp.draw_aabb(aabb, **kwargs)
+
+
+def save_pointcloud_to_ply(c, body, pcd_path, **kwargs):
+    from pyntcloud import PyntCloud
+    import pandas as pd
+
+    start = time.time()
+    points = c.w.get_pointcloud(body, **kwargs)
+    colors = np.ones_like(points) * 0
+    cloud = PyntCloud(pd.DataFrame(
+        # same arguments that you are passing to visualize_pcl
+        data=np.hstack((points, colors)), columns=["x", "y", "z", "red", "green", "blue"]))
+    cloud.to_file(pcd_path)
+    print(f'saved point cloud to {pcd_path} in {round(time.time() - start)} sec')

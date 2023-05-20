@@ -61,7 +61,7 @@ models = {
     ## --------------- TALL --------------- ##
     "Bottle": {
         'models': ['3520', '3596', '3625', '4216', '4403', '4514',
-                   '6771'],
+                   '6771'],  ##
         'length-range': [0.04, 0.06],
     },
 
@@ -132,10 +132,10 @@ models = {
 
 
 @lru_cache(maxsize=None)
-def get_packing_assets(cats=None):
+def get_packing_assets(cats=["Safe", "Suitcase", "Box"]):
     assets = {}
     for cat, data in models.items():
-        if cats is not None and cat not in cats:
+        if cats is not None and cat in cats:
             continue
         for model_id in data['models']:
             extent = np.array(get_model_natural_extent(get_model_path(cat, model_id)))
@@ -148,26 +148,26 @@ def get_packing_assets(cats=None):
     return assets
 
 
-def fit_object_assets(assets, region, padding=0.1):
+def fit_object_assets(region, assets, w, l, h, padding=0.1):
     """ return the fitted asset, sampled scale, and rotation """
     b = 1 - padding
     for identifier, (extent_range, scale_range, extent) in assets.items():
-        x_range, y_range = extent_range
+        x_range, y_range = extent_range[:2]
         ratio = x_range[0] / y_range[0]
-        if x_range[0] < region[3] and y_range[0] < region[4]:
-            scale_range[1] = min(scale_range[1], region[3] * b / ratio)
-            theta = random.choice([0, np.pi])
-        elif x_range[0] < region[4] and y_range[0] < region[3]:
-            scale_range[1] = min(scale_range[1], region[4] * b * ratio)
+        if x_range[0] < region[2] and y_range[0] < region[3]:
+            scale_range[1] = min(scale_range[1], region[2] * b / ratio)
             theta = random.choice([np.pi/2, -np.pi/2])
+        elif x_range[0] < region[3] and y_range[0] < region[2]:
+            scale_range[1] = min(scale_range[1], region[3] * b * ratio)
+            theta = random.choice([0, np.pi])
         else:
             continue
         scale = np.random.uniform(scale_range[0], scale_range[1])
         extent *= scale
-        x = region[0] + region[3] / 2
-        y = region[1] + region[4] / 2
-        z = extent[2] / 2
-        pose = ((x, y, z), pp.quat_from_euler((0, 0, theta)))
+        x = region[0] + region[2] / 2 - w / 2
+        y = region[1] + region[3] / 2 - l / 2
+        z = extent[2] / 2 + h + 0.01
+        pose = ((x, y, z), pp.quat_from_euler((np.pi, 0, theta)))
         return identifier, scale, extent, pose
     return None
 
@@ -176,6 +176,12 @@ def fit_object_assets(assets, region, padding=0.1):
 def get_model_path(category, model_id):
     model_dir = join(MODEL_PATH, category, str(model_id))
     return [join(model_dir, f) for f in listdir(model_dir) if f.endswith('.urdf')][0]
+
+
+@lru_cache(maxsize=None)
+def get_pointcloud_path(category, model_id):
+    model_path = get_model_path(category, model_id)
+    return join(dirname(model_path), 'pointcloud.ply')
 
 
 @lru_cache(maxsize=None)
