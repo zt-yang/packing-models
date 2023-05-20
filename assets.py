@@ -9,7 +9,7 @@ import json
 import pybullet_planning as pp
 import pybullet as p
 
-from pybullet_utils import add_text, draw_fitted_box, get_aabb, draw_points, get_pose, set_pose
+from bullet_utils import add_text, draw_fitted_box, get_aabb, draw_points, get_pose, set_pose
 from hacl.engine.bullet.world import JointState
 
 MODEL_PATH = abspath(join(dirname(abspath(__file__)), 'models'))
