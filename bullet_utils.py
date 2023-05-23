@@ -51,6 +51,15 @@ def set_pose(cid, body, pose):
     p.resetBasePositionAndOrientation(body, pose[0], pose[1], physicsClientId=cid)
 
 
+def set_joint_position(cid, body, joint, value):
+    p.resetJointState(body, joint, targetValue=value, targetVelocity=0, physicsClientId=cid)
+
+
+def set_joint_positions(cid, body, joints, values):
+    for joint, value in zip(joints, values):
+        set_joint_position(cid, body, joint, value)
+
+
 def get_collision_data(cid, body, link=pp.BASE_LINK):
     return [pp.CollisionShapeData(*tup) for tup in p.getCollisionShapeData(body, link, physicsClientId=cid)]
 
@@ -662,6 +671,12 @@ def get_grasp_poses(c, robot, body, instance_name='test', link=None, grasp_lengt
         # remove_handles(cid, handles)
         return found
 
+    ## hack to get generate grasps with known variations
+    add_grasp_in_db(db, db_file, instance_name,
+                    [((0.04, 0, 0.036), (0.5, -0.5, -0.5, 0.5))],
+                    name=c.w.get_body_name(body), scale=scale)
+    return
+
     aabb, handles = draw_fitted_box(cid, body, link=link, verbose=verbose, draw_box=True, draw_centroid=True)
 
     ## get the points in hand frame to be transformed to the origin of object frame in different directions
@@ -734,12 +749,12 @@ def draw_goal_pose(cid, body, pose_g, **kwargs):
     pp.draw_aabb(aabb, **kwargs)
 
 
-def save_pointcloud_to_ply(c, body, pcd_path, **kwargs):
+def save_pointcloud_to_ply(c, body, pcd_path, zero_center=True, points_per_geom=100):
     from pyntcloud import PyntCloud
     import pandas as pd
 
     start = time.time()
-    points = c.w.get_pointcloud(body, **kwargs)
+    points = c.w.get_pointcloud(body, zero_center=zero_center, points_per_geom=points_per_geom)
     colors = np.ones_like(points) * 0
     cloud = PyntCloud(pd.DataFrame(
         # same arguments that you are passing to visualize_pcl

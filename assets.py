@@ -21,6 +21,8 @@ CATEGORIES_SIDE_GRASP = ["Eyeglasses", "Stapler", "BottleOpened", "Dispenser"]
 CATEGORIES_FOLDED_CONTAINER = ["Suitcase", "Box"]
 CATEGORIES_OPENED_SPACE = ["Safe"]
 CATEGORIES_BANDU = ["Bandu", "engmikedset"]  ##
+CATEGORIES_DIFFUSION_CSP = ['Dispenser', 'Bowl', 'StaplerFlat', 'Eyeglasses',
+                            'Pliers', 'Scissors', 'Camera', 'Bottle', 'BottleOpened', 'Mug']
 
 models = {
 
@@ -46,8 +48,8 @@ models = {
         'length-range': [0.05, 0.07],
     },
     "Bowl": {
-        'models': ['7000', '7001', '7002', '7003', '7004'],
-        'length-range': [0.15, 0.17],
+        'models': ['7001', '7002'],
+        'length-range': [0.13, 0.2],
     },
     "Cup": {
         'models': ['7004', '7005', '7006', '7007'],
@@ -93,8 +95,7 @@ models = {
 
     ## --------------- SIDE_GRASP --------------- ##
     "Eyeglasses": {
-        'models': ['101284', '101287', '101293', '101291', '101303',
-                   '101326', '101328', '101838'],
+        'models': ['101284', '101287', '101293', '101291', '101303', '101326', '101838'],  ## '101328',
         'length-range': [0.13, 0.15],
     },
     "Stapler": {
@@ -102,8 +103,7 @@ models = {
         'length-range': [0.18, 0.2],
     },
     "BottleOpened": {
-        'models': ['3571', '3574', '3763', '3517', '3868',
-                   '3830', '3990', '4043'],
+        'models': ['3571', '3574', '3763', '3517', '3830', '3990', '4043'],  ## '3593',
         'length-range': [0.04, 0.06],
     },
     "Dispenser": {
@@ -151,6 +151,7 @@ def get_packing_assets(cats=["Safe", "Suitcase", "Box"]):
 def fit_object_assets(region, assets, w, l, h, padding=0.1):
     """ return the fitted asset, sampled scale, and rotation """
     b = 1 - padding
+    found = []
     for identifier, (extent_range, scale_range, extent) in assets.items():
         x_range, y_range = extent_range[:2]
         ratio = x_range[0] / y_range[0]
@@ -166,10 +167,14 @@ def fit_object_assets(region, assets, w, l, h, padding=0.1):
         extent *= scale
         x = region[0] + region[2] / 2 - w / 2
         y = region[1] + region[3] / 2 - l / 2
-        z = extent[2] / 2 + h + 0.01
-        pose = ((x, y, z), pp.quat_from_euler((np.pi, 0, theta)))
-        return identifier, scale, extent, pose
-    return None
+        z = extent[2] / 2 + h * 3 / 2 + 0.01
+        pose = ((x, y, z), pp.quat_from_euler((theta-np.pi/2, 0, 0)))
+        if len(found) < 20:
+            found.append([identifier, scale, extent, pose])
+    weights = np.arange(len(found)).astype(np.float) + 1
+    weights = 1 / weights
+    weights /= weights.sum().astype(np.float)
+    return random.choices(found, weights=weights.tolist(), k=1)[0]
 
 
 @lru_cache(maxsize=None)
@@ -331,5 +336,31 @@ def download_models():
         download_category(data['models'], category_dir)
 
 
+def check_model_simulatable(cat, model_id):
+    asset_urdf = get_model_path(cat, model_id)
+    lines = ''.join(open(asset_urdf).readlines())
+    return 'mass' in lines and 'friction' in lines
+
+
+def check_grasps_exist(cat, model_id, names=None):
+    if names is None:
+        grasp_file = join(dirname(__file__), 'grasps', f'hand_grasps_PandaRobot.json')
+        names = [v['name'] for v in json.load(open(grasp_file)).values()]
+    return names, f'{cat}_{model_id}' in names
+
+
+def check_simulatable():
+    names = None
+    for cat in CATEGORIES_DIFFUSION_CSP:
+        model_ids = get_model_ids(cat)
+        for model_id in model_ids:
+            if not check_model_simulatable(cat, model_id):
+                print(f'{cat} {model_id} is not simulatable')
+            names, exist = check_grasps_exist(cat, model_id, names)
+            if not exist:
+                print(f'{cat} {model_id} does not have grasps stored')
+
+
 if __name__ == '__main__':
-    download_models()
+    # download_models()
+    check_simulatable()
