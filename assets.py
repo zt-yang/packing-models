@@ -49,29 +49,27 @@ models = {
     },
     "Bowl": {
         'models': ['7001', '7002'],
-        'length-range': [0.13, 0.2],
+        'length-range': [0.13, 0.18],
     },
     "Cup": {
         'models': ['7004', '7005', '7006', '7007'],
         'length-range': [0.07, 0.09],
     },
     "Mug": {
-        'models': ['7008', '7009', '7010', '7011'],
-        'length-range': [0.07, 0.09],
+        'models': ['7009'],  ## '7008', '7011', '7010',
+        'length-range': [0.08, 0.09],
     },
 
     ## --------------- TALL --------------- ##
     "Bottle": {
-        'models': ['3520', '3596', '3625', '4216', '4403', '4514',
-                   '6771'],  ##
-        'length-range': [0.04, 0.06],
+        'models': ['3520', '3596', '4216', '4403', '4514', '6771'],  ## '3625',
+        'length-range': [0.03, 0.045],
     },
 
     ## --------------- NON_CONVEX --------------- ##
     "Camera": {
-        'models': ['101352', '102417', '102434', '102536', '102852',
-                   '102873', '102890'],
-        'height-range': [0.09, 0.11],
+        'models': ['101352', '102417', '102536', '102852', '102873'],  ## '102434', '102890',
+        'height-range': [0.08, 0.09],
     },
     "FoldingKnife": {
         'models': ['101068', '101079', '101107', '101245', '103740'],
@@ -109,7 +107,7 @@ models = {
     "Dispenser": {
         'models': ['101458', '101517', '101533', '101563', '103397',
                    '103416'],
-        'length-range': [0.05, 0.07],
+        'length-range': [0.06, 0.07],
     },
 
     ## --------------- FOLDED_CONTAINER --------------- ##
@@ -132,10 +130,10 @@ models = {
 
 
 @lru_cache(maxsize=None)
-def get_packing_assets(cats=["Safe", "Suitcase", "Box"]):
+def get_packing_assets():
     assets = {}
     for cat, data in models.items():
-        if cats is not None and cat in cats:
+        if cat not in CATEGORIES_DIFFUSION_CSP:
             continue
         for model_id in data['models']:
             extent = np.array(get_model_natural_extent(get_model_path(cat, model_id)))
@@ -157,10 +155,10 @@ def fit_object_assets(region, assets, w, l, h, padding=0.1):
         ratio = x_range[0] / y_range[0]
         if x_range[0] < region[2] and y_range[0] < region[3]:
             scale_range[1] = min(scale_range[1], region[2] * b / ratio)
-            theta = random.choice([np.pi/2, -np.pi/2])
+            theta = random.choice([0, np.pi])
         elif x_range[0] < region[3] and y_range[0] < region[2]:
             scale_range[1] = min(scale_range[1], region[3] * b * ratio)
-            theta = random.choice([0, np.pi])
+            theta = random.choice([np.pi/2, -np.pi/2])
         else:
             continue
         scale = np.random.uniform(scale_range[0], scale_range[1])
@@ -168,12 +166,12 @@ def fit_object_assets(region, assets, w, l, h, padding=0.1):
         x = region[0] + region[2] / 2 - w / 2
         y = region[1] + region[3] / 2 - l / 2
         z = extent[2] / 2 + h * 3 / 2 + 0.01
-        pose = ((x, y, z), pp.quat_from_euler((theta-np.pi/2, 0, 0)))
+        pose = ((x, y, z), pp.quat_from_euler((theta, 0, 0)))
         if len(found) < 20:
-            found.append([identifier, scale, extent, pose])
-    weights = np.arange(len(found)).astype(np.float) + 1
+            found.append([identifier, scale, extent, pose, theta])
+    weights = np.arange(len(found)).astype(float) + 1
     weights = 1 / weights
-    weights /= weights.sum().astype(np.float)
+    weights /= weights.sum().astype(float)
     return random.choices(found, weights=weights.tolist(), k=1)[0]
 
 
@@ -253,10 +251,16 @@ def get_model_scale_from_constraint(category, model_id, c=None):
     return scale_range
 
 
-def sample_model_scale_from_constraint(category, model_id, c=None):
+def sample_model_scale_from_constraint(category, model_id, c=None, scale=None):
     scale_range = get_model_scale_from_constraint(category, model_id, c)
-    scale = np.random.uniform(*scale_range)
-    return scale
+    if scale == 'max':
+        return scale_range[1]
+    elif scale == 'min':
+        return scale_range[0]
+    elif scale is not None:
+        amount = float(scale)
+        return scale_range[0] + (scale_range[1] - scale_range[0]) * amount
+    return np.random.uniform(*scale_range)
 
 
 def bottom_to_center(cid, body):
@@ -273,8 +277,8 @@ def load_asset_to_pdsketch(c, category, model_id, scale=None, name=None, floor=N
 
     with c.disable_rendering():
         gap = 0.01
-        if scale is None:
-            scale = sample_model_scale_from_constraint(category, model_id, c)
+        if not isinstance(scale, float):
+            scale = sample_model_scale_from_constraint(category, model_id, c, scale)
 
         pos = kwargs.pop('pos', (0, 0, 0))
         quat = (0, 0, 0, 1)

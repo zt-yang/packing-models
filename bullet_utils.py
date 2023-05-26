@@ -625,8 +625,7 @@ def set_gripper_pose(c, body, robot, grasp_pose, try_length=False):
 
         ## should collide with the object when closed gripper at grasp conf
         robot.close_gripper_free()
-        colliding = c.w.get_contact(robot.panda)
-        colliding = [c for c in colliding if c.body_b == body]
+        colliding = [cl for cl in c.w.get_contact(robot.panda) if cl.body_b == body]
         if len(colliding) == 0:
             continue
         gripper_pstn = sum(c.w.get_batched_qpos_by_id(robot.panda, robot.gripper_joints))
@@ -745,8 +744,12 @@ def get_grasp_poses(c, robot, body, instance_name='test', link=None, grasp_lengt
 
 
 def draw_goal_pose(cid, body, pose_g, **kwargs):
-    aabb = aabb_from_extent_center(pp.get_aabb_extent(get_aabb(cid, body)), pose_g[0])
+    # aabb = aabb_from_extent_center(pp.get_aabb_extent(get_aabb(cid, body)), pose_g[0])
+    pose = get_pose(cid, body)
+    set_pose(cid, body, pose_g)
+    aabb = get_aabb(cid, body)
     pp.draw_aabb(aabb, **kwargs)
+    set_pose(cid, body, pose)
 
 
 def save_pointcloud_to_ply(c, body, pcd_path, zero_center=True, points_per_geom=100):
@@ -761,3 +764,158 @@ def save_pointcloud_to_ply(c, body, pcd_path, zero_center=True, points_per_geom=
         data=np.hstack((points, colors)), columns=["x", "y", "z", "red", "green", "blue"]))
     cloud.to_file(pcd_path)
     print(f'saved point cloud to {pcd_path} in {round(time.time() - start)} sec')
+
+
+#################################################################
+
+
+CameraImage = namedtuple('CameraImage', ['rgbPixels', 'depthPixels', 'segmentationMaskBuffer',
+                                         'camera_pose', 'camera_matrix'])
+
+
+def get_image_flags(segment=False, segment_links=False):
+    if segment:
+        if segment_links:
+            return p.ER_SEGMENTATION_MASK_OBJECT_AND_LINKINDEX
+        return 0 # TODO: adjust output dimension when not segmenting links
+    return p.ER_NO_SEGMENTATION_MASK
+
+
+def compiled_with_numpy():
+    return bool(p.isNumpyEnabled())
+
+
+def get_focal_lengths(dims, fovs):
+    return np.divide(dims, np.tan(fovs / 2)) / 2
+
+
+def get_camera_matrix(width, height, fx, fy=None):
+    if fy is None:
+        fy = fx
+    cx, cy = (width - 1) / 2., (height - 1) / 2.
+    return np.array([[fx, 0, cx],
+                     [0, fy, cy],
+                     [0, 0, 1]])
+
+
+def get_image(cid, camera_pos, target_pos, width=640, height=480, vertical_fov=60.0, near=0.02, far=5.0,
+              tiny=False, segment=False, **kwargs):
+    # computeViewMatrixFromYawPitchRoll
+    up_vector = [0, 0, 1] # up vector of the camera, in Cartesian world coordinates
+    view_matrix = p.computeViewMatrix(cameraEyePosition=camera_pos, cameraTargetPosition=target_pos,
+                                      cameraUpVector=up_vector, physicsClientId=cid)
+    projection_matrix = pp.get_projection_matrix(width, height, vertical_fov, near, far)
+
+    flags = get_image_flags(segment=segment, **kwargs)
+    # DIRECT mode has no OpenGL, so it requires ER_TINY_RENDERER
+    renderer = p.ER_TINY_RENDERER if tiny else p.ER_BULLET_HARDWARE_OPENGL
+    width, height, rgb, d, seg = p.getCameraImage(width, height,
+                                                  viewMatrix=view_matrix,
+                                                  projectionMatrix=projection_matrix,
+                                                  shadow=False, # only applies to ER_TINY_RENDERER
+                                                  flags=flags,
+                                                  renderer=renderer,
+                                                  physicsClientId=cid)
+    if not compiled_with_numpy():
+        rgb = np.reshape(rgb, [height, width, -1]) # 4
+        d = np.reshape(d, [height, width])
+        seg = np.reshape(seg, [height, width])
+
+    depth = far * near / (far - (far - near) * d)
+    segmented = seg
+
+    camera_tform = np.reshape(view_matrix, [4, 4])
+    camera_tform[:3, 3] = camera_pos
+    view_pose = pp.multiply(pp.pose_from_tform(camera_tform), pp.Pose(euler=pp.Euler(roll=pp.PI)))
+
+    focal_length = get_focal_lengths(height, vertical_fov) # TODO: horizontal_fov
+    camera_matrix = get_camera_matrix(width, height, focal_length)
+
+    return CameraImage(rgb, depth, segmented, view_pose, camera_matrix)
+
+
+def dimensions_from_camera_matrix(camera_matrix):
+    cx, cy = np.array(camera_matrix)[:2, 2]
+    width, height = (2*cx + 1), (2*cy + 1)
+    return width, height
+
+
+def get_field_of_view(camera_matrix):
+    dimensions = np.array(dimensions_from_camera_matrix(camera_matrix))
+    focal_lengths = np.array([camera_matrix[i, i] for i in range(2)])
+    return 2*np.arctan(np.divide(dimensions, 2*focal_lengths))
+
+
+def get_camera_image_at_pose(camera_point, target_point, camera_matrix, far=5.0, **kwargs):
+    # far is the maximum depth value
+    width, height = map(int, dimensions_from_camera_matrix(camera_matrix))
+    _, vertical_fov = get_field_of_view(camera_matrix)
+    return pp.get_image(camera_point, target_point, width=width, height=height,
+                        vertical_fov=vertical_fov, far=far, **kwargs)
+
+
+TRANSPARENT = (0, 0, 0, 0)
+
+
+def in_pycharm():
+    import psutil
+    return psutil.Process(os.getpid()).name() not in ['zsh', 'bash', 'python']  ## will ve 'java' if ran inside the IDE
+
+
+def set_color(cid, body, color, link=pp.BASE_LINK, shape_index=pp.NULL_ID):
+    if link is None:
+        return set_all_color(cid, body, color)
+    return p.changeVisualShape(body, link, shapeIndex=shape_index, rgbaColor=color,
+                               physicsClientId=cid)
+
+
+def set_all_color(cid, body, color):
+    for link in get_all_links(cid, body):
+        set_color(cid, body, color, link)
+
+
+def take_top_down_image(cid, robot, tray_point, png_name=None, goal_pose_only=False):
+    if goal_pose_only:
+        set_all_color(cid, robot.panda, TRANSPARENT)
+        camera_pose = tuple((np.array(tray_point) + np.array([-0.01, 0, 0.5])).tolist())
+        target_pose = tray_point
+    else:
+        q = [1.57, 1.8, -3.14, -1.57, -1.57, 1.57, 0]
+        robot.set_qpos(q)
+        camera_pose = [0, 0.01, 1.2]
+        target_pose = (0, 0, 0)
+
+    rgb, depth, seg, pose, matrix = get_image(
+        cid, camera_pose, target_pose, width=640, height=480, vertical_fov=30,
+        near=0.02, far=5.0, tiny=False, segment=False)
+
+    if goal_pose_only:
+        set_all_color(cid, robot.panda, (1, 1, 1, 1))
+    else:
+        robot.set_qpos(robot.get_home_qpos())
+
+    if png_name is not None:
+        save_image(rgb, png_name)
+    else:
+        return rgb
+
+
+def save_image(image, png_name):
+    import matplotlib.pyplot as plt
+    plt.imshow(image)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(png_name, bbox_inches='tight', dpi=100)
+    plt.close()
+    # if in_pycharm():
+    #     plt.show()
+    # else:
+    #     plt.close()
+
+
+def merge_images(before, after, png_name):
+    ## concatenate the left half of before array with the right half of after array
+    before = before[:, :before.shape[1]//2, :]
+    after = after[:, after.shape[1]//2:, :]
+    image = np.concatenate((before, after), axis=1)
+    save_image(image, png_name)
