@@ -743,12 +743,24 @@ def get_grasp_poses(c, robot, body, instance_name='test', link=None, grasp_lengt
     return grasps  ##[:1]
 
 
+def draw_aabb(cid, aabb, **kwargs):
+    d = len(aabb[0])
+    vertices = list(product(range(len(aabb)), repeat=d))
+    lines = []
+    for i1, i2 in combinations(vertices, 2):
+        if sum(i1[k] != i2[k] for k in range(d)) == 1:
+            p1 = [aabb[i1[k]][k] for k in range(d)]
+            p2 = [aabb[i2[k]][k] for k in range(d)]
+            lines.append(add_line(cid, p1, p2, **kwargs))
+    return lines
+
+
 def draw_goal_pose(cid, body, pose_g, **kwargs):
     # aabb = aabb_from_extent_center(pp.get_aabb_extent(get_aabb(cid, body)), pose_g[0])
     pose = get_pose(cid, body)
     set_pose(cid, body, pose_g)
     aabb = get_aabb(cid, body)
-    pp.draw_aabb(aabb, **kwargs)
+    draw_aabb(aabb, **kwargs)
     set_pose(cid, body, pose)
 
 
