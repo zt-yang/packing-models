@@ -874,6 +874,30 @@ def set_all_color(cid, body, color):
         set_color(cid, body, color, link)
 
 
+def get_bullet_image(cid, camera_pose, target_pose):
+    rgb, depth, seg, pose, matrix = get_image(
+        cid, camera_pose, target_pose, width=640, height=480, vertical_fov=30,
+        near=0.02, far=5.0, tiny=False, segment=False)
+    return rgb
+
+
+def rotate_180(array):
+    M, N = array.shape[:2]
+    out = np.zeros_like(array)
+    for i in range(M):
+        for j in range(N):
+            out[i, N-1-j] = array[M-1-i, j]
+
+
+def take_bullet_image(cid, camera_pose, target_pose, png_name=None, tf=None):
+    rgb = get_bullet_image(cid, camera_pose, target_pose)
+    if tf == 'rot180':
+        rgb = np.rot90(rgb, 2)
+    if png_name is not None:
+        save_image(rgb, png_name)
+    return rgb
+
+
 def take_top_down_image(cid, robot, tray_point, png_name=None, goal_pose_only=False):
     if goal_pose_only:
         set_all_color(cid, robot.panda, TRANSPARENT)
@@ -885,19 +909,14 @@ def take_top_down_image(cid, robot, tray_point, png_name=None, goal_pose_only=Fa
         camera_pose = [0, 0.01, 1.2]
         target_pose = (0, 0, 0)
 
-    rgb, depth, seg, pose, matrix = get_image(
-        cid, camera_pose, target_pose, width=640, height=480, vertical_fov=30,
-        near=0.02, far=5.0, tiny=False, segment=False)
+    rgb = take_bullet_image(cid, camera_pose, target_pose, png_name)
 
     if goal_pose_only:
         set_all_color(cid, robot.panda, (1, 1, 1, 1))
     else:
         robot.set_qpos(robot.get_home_qpos())
 
-    if png_name is not None:
-        save_image(rgb, png_name)
-    else:
-        return rgb
+    return rgb
 
 
 def save_image(image, png_name):

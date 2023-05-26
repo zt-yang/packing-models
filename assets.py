@@ -14,10 +14,10 @@ from hacl.engine.bullet.world import JointState
 
 MODEL_PATH = abspath(join(dirname(abspath(__file__)), 'models'))
 
-CATEGORIES_BOX = ["Phone", "Remote", "StaplerFlat", "USBFlat", "Bowl", "Cup", "Mug"]
-CATEGORIES_TALL = ["Bottle"]
-CATEGORIES_NON_CONVEX = ["Camera", "FoldingKnife", "Pliers", "Scissors", "USB"]
-CATEGORIES_SIDE_GRASP = ["Eyeglasses", "Stapler", "BottleOpened", "Dispenser"]
+CATEGORIES_BOX = ["Phone", "Remote", "StaplerFlat", "USBFlat", "Bowl", "Cup", "Mug", "Bottle"]
+CATEGORIES_TALL = ["BottleOpened"]
+CATEGORIES_NON_CONVEX = ["Eyeglasses", "Camera", "FoldingKnife", "Pliers", "Scissors", "USB"]
+CATEGORIES_SIDE_GRASP = ["Stapler", "BottleOpened", "Dispenser", "Bowl"]
 CATEGORIES_FOLDED_CONTAINER = ["Suitcase", "Box"]
 CATEGORIES_OPENED_SPACE = ["Safe"]
 CATEGORIES_BANDU = ["Bandu", "engmikedset"]  ##
@@ -267,7 +267,15 @@ def bottom_to_center(cid, body):
     return get_pose(cid, body)[0][2] - get_aabb(cid, body).lower[2]
 
 
-def load_asset_to_pdsketch(c, category, model_id, scale=None, name=None, floor=None, draw_bb=False, **kwargs):
+def is_array(x, length=None):
+    result = isinstance(x, np.ndarray) or isinstance(x, list) or isinstance(x, tuple)
+    if length is not None:
+        result = result and len(x) == length
+    return result
+
+
+def load_asset_to_pdsketch(c, category, model_id, scale=None, name=None, floor=None,
+                           pos=None, draw_bb=False, **kwargs):
     """ load a model from the dataset into the bullet environment though PDSketch API """
     model_path = get_model_path(category, model_id)
 
@@ -275,20 +283,27 @@ def load_asset_to_pdsketch(c, category, model_id, scale=None, name=None, floor=N
         name = f'{category}_{model_id}'
     print('load_asset_to_pdsketch.loading', name)
 
+    adjust = False
     with c.disable_rendering():
         gap = 0.01
+
         if not isinstance(scale, float):
             scale = sample_model_scale_from_constraint(category, model_id, c, scale)
 
-        pos = kwargs.pop('pos', (0, 0, 0))
-        quat = (0, 0, 0, 1)
-        if len(pos) == 2 and isinstance(pos[0], tuple):
+        if len(pos) == 2 and is_array(pos[0], length=3) and is_array(pos[1], length=4):
             pos, quat = pos
-        if floor is not None:
-            extent = get_model_natural_extent(model_path, c)
-            pos = list(pos[:2]) + [get_aabb(c.client_id, floor).upper[2] + extent[2] * scale / 2 + gap]
+        else:
+            quat = (0, 0, 0, 1)
+            if len(pos) == 2 and isinstance(pos[0], tuple):
+                pos, quat = pos
+            if floor is not None:
+                extent = get_model_natural_extent(model_path, c)
+                pos = list(pos[:2]) + [get_aabb(c.client_id, floor).upper[2] + extent[2] * scale / 2 + gap]
+            adjust = True
 
         body = c.load_urdf(model_path, pos=pos, quat=quat, body_name=name, scale=scale, **kwargs)
+
+        ## adjust because sometimes the model is not centered on z axis
         if floor is not None:
             bottom_to_ceter = bottom_to_center(c.client_id, body) + gap
             pose = get_pose(c.client_id, body)
