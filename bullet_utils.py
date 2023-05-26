@@ -760,7 +760,7 @@ def draw_goal_pose(cid, body, pose_g, **kwargs):
     pose = get_pose(cid, body)
     set_pose(cid, body, pose_g)
     aabb = get_aabb(cid, body)
-    draw_aabb(aabb, **kwargs)
+    draw_aabb(cid, aabb, **kwargs)
     set_pose(cid, body, pose)
 
 
