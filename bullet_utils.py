@@ -960,3 +960,27 @@ def merge_images(before, after, png_name):
     after = after[:, after.shape[1]//2:, :]
     image = np.concatenate((before, after), axis=1)
     save_image(image, png_name)
+
+
+######################################################################################
+
+
+def parallel_processing(process, inputs, parallel):
+    start_time = time.time()
+    num_cases = len(inputs)
+
+    if parallel:
+        import multiprocessing
+        from multiprocessing import Pool
+
+        max_cpus = 10
+        num_cpus = min(multiprocessing.cpu_count(), max_cpus)
+        print(f'\nusing {num_cpus} cpus\n')
+        with Pool(processes=num_cpus) as pool:
+            pool.map(process, inputs)
+
+    else:
+        for i in range(num_cases):
+            process(inputs[i])
+
+    print(f'went through {num_cases} run_dirs (parallel={parallel}) in {round(time.time() - start_time, 3)} sec')
