@@ -6,6 +6,7 @@ import numpy as np
 import time
 import json
 import math
+from datetime import datetime
 import pybullet as p
 import pybullet_planning as pp
 from collections import namedtuple
@@ -420,12 +421,21 @@ def nice(tuple_of_tuples, round_to=3, one_tuple=True):
     return nice_tuple(tuple_of_tuples, round_to)
 
 
-def get_datetime(year=True):
-    from datetime import datetime
+def get_datetime_form(year=True):
     form = "%m%d_%H%M%S"
     if year:
         form = "%y" + form
+    return form
+
+
+def get_datetime(year=True):
+    form = get_datetime_form(year)
     return datetime.now().strftime(form)
+
+
+def parse_datetime(string, year=True):
+    form = get_datetime_form(year)
+    return datetime.strptime(string, form).timestamp()
 
 
 def draw_pose(cid, pose, length=0.1, d=3, **kwargs):

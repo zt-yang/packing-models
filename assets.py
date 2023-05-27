@@ -9,7 +9,8 @@ import json
 import pybullet_planning as pp
 import pybullet as p
 
-from bullet_utils import add_text, draw_fitted_box, get_aabb, draw_points, get_pose, set_pose
+from bullet_utils import add_text, draw_fitted_box, get_aabb, draw_points, get_pose, \
+    set_pose, nice
 from hacl.engine.bullet.world import JointState
 
 MODEL_PATH = abspath(join(dirname(abspath(__file__)), 'models'))
@@ -167,11 +168,16 @@ def fit_object_assets(region, assets, w, l, h, padding=0.1):
         y = region[1] + region[3] / 2 - l / 2
         z = extent[2] / 2 + h * 3 / 2 + 0.01
         pose = ((x, y, z), pp.quat_from_euler((theta, 0, 0)))
-        if len(found) < 20:
-            found.append([identifier, scale, extent, pose, theta])
-    weights = np.arange(len(found)).astype(float) + 1
+        found.append([identifier, scale, extent, pose, theta])
+
+    n = len(found)
+    first = min([n, 5])
+    second = n - first
+    weights = np.log(np.arange(first).astype(float) + 2)
     weights = 1 / weights
+    weights = np.concatenate([weights, np.ones(second) * weights[-1]])
     weights /= weights.sum().astype(float)
+    # print(len(weights), [round(w, 3) for w in weights])
     return random.choices(found, weights=weights.tolist(), k=1)[0]
 
 
@@ -361,10 +367,17 @@ def check_model_simulatable(cat, model_id):
     return 'mass' in lines and 'friction' in lines
 
 
+@lru_cache(maxsize=1000)
+def get_grasp_data():
+    """ cat_model: grasps """
+    grasp_file = join(dirname(__file__), 'grasps', f'hand_grasps_PandaRobot.json')
+    data = json.load(open(grasp_file)).values()
+    return {d['name']: d['grasps'] for d in data}
+
+
 def check_grasps_exist(cat, model_id, names=None):
     if names is None:
-        grasp_file = join(dirname(__file__), 'grasps', f'hand_grasps_PandaRobot.json')
-        names = [v['name'] for v in json.load(open(grasp_file)).values()]
+        names = list(get_grasp_data().keys())
     return names, f'{cat}_{model_id}' in names
 
 
@@ -378,6 +391,19 @@ def check_simulatable():
             names, exist = check_grasps_exist(cat, model_id, names)
             if not exist:
                 print(f'{cat} {model_id} does not have grasps stored')
+
+
+@lru_cache(maxsize=1000)
+def get_grasps(name):
+    return get_grasp_data()[name]
+
+
+@lru_cache(maxsize=1000)
+def get_grasp_id(name, nice_grasp):
+    grasps = [nice(x, 2)[-3:] for x in get_grasp_data()[name]]
+    if nice_grasp not in grasps:
+        return 'x'
+    return grasps.index(nice_grasp)
 
 
 if __name__ == '__main__':
