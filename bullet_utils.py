@@ -15,6 +15,7 @@ from itertools import product, combinations
 
 GRASPS_DIR = abspath(join(dirname(__file__), 'grasps'))
 COLLISION_FILE = join(GRASPS_DIR, 'collisions.json')
+PP_RAINBOW_COLORS = [pp.RED, pp.BROWN, pp.YELLOW, pp.GREEN, pp.BLUE, pp.TAN, pp.GREY, pp.WHITE, pp.BLACK]
 
 
 def add_text(cid, text, body_id, link_id=pp.BASE_LINK, position=(0., 0., 0.), color='r'):
@@ -544,7 +545,7 @@ def dump_json(db, db_file, indent=2, width=160, sort_dicts=True, **kwargs):
                                **kwargs).replace("'", '"'))
 
 
-def add_grasp_in_db(db, db_file, instance_name, grasps, name=None, scale=None):
+def add_grasp_in_db(db, db_file, instance_name, grasps, name=None, scale=None, grasp_sides=None):
     if instance_name is None: return
 
     add_grasps = []
@@ -568,6 +569,8 @@ def add_grasp_in_db(db, db_file, instance_name, grasps, name=None, scale=None):
             'datetime': get_datetime(),
             'scale': scale,
         }
+        if grasp_sides is not None:
+            db[instance_name]['grasp_sides'] = grasp_sides
     keys = {k: v['datetime'] for k, v in db.items()}
     keys = sorted(keys.items(), key=lambda x: x[1])
     db = {k: db[k] for k, v in keys}
@@ -745,12 +748,170 @@ def get_grasp_poses(c, robot, body, instance_name='test', link=None, grasp_lengt
             print(title, 'no grasps found')
 
     ## lastly store the newly sampled grasps
-    add_grasp_in_db(db, db_file, instance_name, grasps, name=c.w.get_body_name(body), scale=scale)
+    name = c.w.get_body_name(body)
+    grasp_sides = get_grasp_sides(c, body, grasps)
+    add_grasp_in_db(db, db_file, instance_name, grasps, name=name, scale=scale, grasp_sides=grasp_sides)
     remove_handles(cid, handles)
     # if len(grasps) > num_samples:
     #     random.shuffle(grasps)
     #     return grasps[:num_samples]
     return grasps  ##[:1]
+
+
+def load_floating_gripper(c):
+    FEG_FILE = 'assets://franka_description/robots/hand.urdf'
+    with c.disable_rendering():
+        feg = c.load_urdf(FEG_FILE, pos=pp.unit_point(), quat=pp.unit_quat(), static=True, body_name='feg', group=None)
+        set_all_color(c.client_id, feg, color=pp.GREEN)
+        return feg
+
+
+CollisionInfo = namedtuple('CollisionInfo',
+                           '''
+                           contactFlag
+                           bodyUniqueIdA
+                           bodyUniqueIdB
+                           linkIndexA
+                           linkIndexB
+                           positionOnA
+                           positionOnB
+                           contactNormalOnB
+                           contactDistance
+                           normalForce
+                           lateralFriction1
+                           lateralFrictionDir1
+                           lateralFriction2
+                           lateralFrictionDir2
+                           '''.split())
+
+
+def get_contact_points(cid, **kwargs):
+    return [CollisionInfo(*info) for info in p.getContactPoints(physicsClientId=cid, **kwargs)]
+
+
+##########################################################################################
+
+
+def get_reachability_dir():
+    return abspath(join(dirname(__file__), 'reachability'))
+
+
+def get_reachability_file(name, num_samples=50000, use_rrt=False):
+    """ {name} = {cat}_{model_id} """
+    output_dir = get_reachability_dir()
+    name += f'_n={num_samples}'
+    if use_rrt:
+        name += '_rrt'
+    return join(output_dir, f'{name}.csv')
+
+
+def get_grasps_given_name_scale(name, scale):
+    import pandas as pd
+    df = pd.read_csv(get_reachability_file(name))
+    df = df.loc[df['solved'] == True]
+    scales = df.scale.unique()
+    scale = min(scales, key=lambda x: abs(x - scale))
+    df = df.loc[df['scale'] == scale]
+    return df
+
+
+def get_pose_from_row(row, z):
+    return ((row['x'], row['y'], z), pp.quat_from_euler((0, 0, row['theta'])))
+
+
+def sample_reachable_pose_nearest_neighbor(name, scale, pose_i, z, valid_grasps):
+    df = get_grasps_given_name_scale(name, scale)
+    df = df.loc[df['grasp_id'].isin(valid_grasps)]
+
+    ## find the row in df that has the minimum distance to the given pose
+    df['dist'] = df.apply(lambda row: np.linalg.norm(np.array([row['x'], row['y']]) - pose_i), axis=1)
+    row = df.loc[df['dist'].idxmin()]
+    pose = get_pose_from_row(row, z)
+    grasp_id = row['grasp_id']
+    return pose, grasp_id
+
+
+def sample_reachable_pose_given_grasp(name, scale, grasp_id, z):
+    df = get_grasps_given_name_scale(name, scale)
+    df = df.loc[df['grasp_id'] == grasp_id]
+    idx = np.random.randint(len(df))
+    row = df.iloc[idx]
+    return get_pose_from_row(row, z)
+
+
+##########################################################################################
+
+
+def load_body_five_sides(c, body):
+    aabb = get_aabb(c.client_id, body)
+    w, l, h = pp.get_aabb_extent(aabb)
+    x, y, z = pp.get_aabb_center(aabb)
+    t = 0.005
+    boxes = [
+        ('z+', (w, l, t), (x, y, z + h / 2 - t)),
+        ('y+', (w, t, h), (x, y + l / 2 - t, z)),
+        ('y-', (w, t, h), (x, y - l / 2 + t, z)),
+        ('x+', (t, l, h), (x + w / 2 - t, y, z)),
+        ('x-', (t, l, h), (x - w / 2 + t, y, z)),
+    ]
+    all_sides = {}
+    for i, (label, dim, pose) in enumerate(boxes):
+        side = c.load_urdf_template(
+            'assets://box/box-template.urdf',
+            {'DIM': dim, 'LATERAL_FRICTION': 1.0, 'MASS': 0.2,
+             'COLOR': pp.apply_alpha(PP_RAINBOW_COLORS[i], 0.5)},
+            pose, body_name=label, group='rigid', static=False
+        )
+        all_sides[side] = label
+    return all_sides
+
+
+def remove_body_five_sides(c, all_sides):
+    for side in all_sides:
+        c.remove_body(side)
+
+
+def get_grasp_sides(c, name, robot, body, grasps):
+    """ return a list of lists of sides of the object that the grasp is on """
+
+    cid = c.client_id
+    scale = get_loaded_scale(cid, body)
+    c.w.set_batched_qpos_by_id(robot.panda, robot.gripper_joints, [0, 0])
+
+    all_sides = None
+    exist_sides = False
+    pose = get_pose(cid, body)
+    z = get_pose(cid, body)[0][2]
+    all_grasp_sides = []
+    for i, grasp in enumerate(grasps):
+        grasp_sides = []
+
+        ## re-place object if it could not be grasped
+        pick_ee_pose = pp.multiply(pose, grasp)
+        pick_q = robot.ikfast(pick_ee_pose[0], pick_ee_pose[1], error_on_fail=False)
+        while pick_q is None:
+            pose = sample_reachable_pose_given_grasp(name, scale, i, z)
+            exist_sides = False
+            pick_ee_pose = pp.multiply(pose, grasp)
+            pick_q = robot.ikfast(pick_ee_pose[0], pick_ee_pose[1], error_on_fail=False)
+
+        robot.set_qpos(pick_q)
+        set_pose(cid, body, pose)
+
+        ## put sides for collision checking
+        if not exist_sides:
+            if all_sides is not None:
+                remove_body_five_sides(c, all_sides)
+            all_sides = load_body_five_sides(c, body)
+
+        for side, label in all_sides.items():
+            contacts = get_contact_points(cid, bodyA=robot.panda, bodyB=side)
+            # contacts = [ct for ct in contacts if ct.contactFlag == 1]
+            if len(contacts) > 0:
+                grasp_sides.append(label)
+        all_grasp_sides.append(grasp_sides)
+
+    return all_grasp_sides
 
 
 def draw_aabb(cid, aabb, **kwargs):
@@ -766,12 +927,12 @@ def draw_aabb(cid, aabb, **kwargs):
 
 
 def draw_goal_pose(cid, body, pose_g, **kwargs):
-    # aabb = aabb_from_extent_center(pp.get_aabb_extent(get_aabb(cid, body)), pose_g[0])
-    pose = get_pose(cid, body)
-    set_pose(cid, body, pose_g)
-    aabb = get_aabb(cid, body)
+    aabb = aabb_from_extent_center(pp.get_aabb_extent(get_aabb(cid, body)), pose_g[0])
+    # pose = get_pose(cid, body)
+    # set_pose(cid, body, pose_g)
+    # aabb = get_aabb(cid, body)
     draw_aabb(cid, aabb, **kwargs)
-    set_pose(cid, body, pose)
+    # set_pose(cid, body, pose)
 
 
 def save_pointcloud_to_ply(c, body, pcd_path, zero_center=True, points_per_geom=100):
@@ -969,6 +1130,7 @@ def parallel_processing(process, inputs, parallel):
     start_time = time.time()
     num_cases = len(inputs)
 
+    outputs = []
     if parallel:
         import multiprocessing
         from multiprocessing import Pool
@@ -978,9 +1140,10 @@ def parallel_processing(process, inputs, parallel):
         print(f'\nusing {num_cpus} cpus\n')
         with Pool(processes=num_cpus) as pool:
             pool.map(process, inputs)
-
     else:
+
         for i in range(num_cases):
-            process(inputs[i])
+            outputs.append(process(inputs[i]))
 
     print(f'went through {num_cases} run_dirs (parallel={parallel}) in {round(time.time() - start_time, 3)} sec')
+    return outputs

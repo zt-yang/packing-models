@@ -304,13 +304,13 @@ def load_asset_to_pdsketch(c, category, model_id, scale=None, name=None, floor=N
                 pos, quat = pos
             if floor is not None:
                 extent = get_model_natural_extent(model_path, c)
-                pos = list(pos[:2]) + [get_aabb(c.client_id, floor).upper[2] + extent[2] * scale / 2 + gap]
+                pos = tuple(list(pos[:2]) + [get_aabb(c.client_id, floor).upper[2] + extent[2] * scale / 2 + gap])
             adjust = True
 
         body = c.load_urdf(model_path, pos=pos, quat=quat, body_name=name, scale=scale, **kwargs)
 
         ## adjust because sometimes the model is not centered on z axis
-        if floor is not None:
+        if floor is not None and adjust:
             bottom_to_ceter = bottom_to_center(c.client_id, body) + gap
             pose = get_pose(c.client_id, body)
             pose = (list(pose[0][:2]) + [get_aabb(c.client_id, floor).upper[2] + bottom_to_ceter], pose[1])
@@ -375,6 +375,13 @@ def get_grasp_data():
     return {d['name']: d['grasps'] for d in data}
 
 
+def get_cat_models(cats=CATEGORIES_DIFFUSION_CSP):
+    for cat in cats:
+        model_ids = get_model_ids(cat)
+        for model_id in model_ids:
+            yield cat, model_id
+
+
 def check_grasps_exist(cat, model_id, names=None):
     if names is None:
         names = list(get_grasp_data().keys())
@@ -383,14 +390,12 @@ def check_grasps_exist(cat, model_id, names=None):
 
 def check_simulatable():
     names = None
-    for cat in CATEGORIES_DIFFUSION_CSP:
-        model_ids = get_model_ids(cat)
-        for model_id in model_ids:
-            if not check_model_simulatable(cat, model_id):
-                print(f'{cat} {model_id} is not simulatable')
-            names, exist = check_grasps_exist(cat, model_id, names)
-            if not exist:
-                print(f'{cat} {model_id} does not have grasps stored')
+    for cat, model_id in get_cat_models():
+        if not check_model_simulatable(cat, model_id):
+            print(f'{cat} {model_id} is not simulatable')
+        names, exist = check_grasps_exist(cat, model_id, names)
+        if not exist:
+            print(f'{cat} {model_id} does not have grasps stored')
 
 
 @lru_cache(maxsize=1000)
