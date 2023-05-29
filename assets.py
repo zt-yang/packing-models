@@ -8,9 +8,12 @@ from functools import lru_cache
 import json
 import pybullet_planning as pp
 import pybullet as p
+import sys
+import functools
+err = functools.partial(print, flush=True, file=sys.stderr)
 
 from bullet_utils import add_text, draw_fitted_box, get_aabb, draw_points, get_pose, \
-    set_pose, nice
+    set_pose, nice, get_grasp_db_file
 from hacl.engine.bullet.world import JointState
 
 MODEL_PATH = abspath(join(dirname(abspath(__file__)), 'models'))
@@ -130,7 +133,7 @@ models = {
 }
 
 
-@lru_cache(maxsize=None)
+@lru_cache()
 def get_packing_assets():
     assets = {}
     for cat, data in models.items():
@@ -181,19 +184,19 @@ def fit_object_assets(region, assets, w, l, h, padding=0.1):
     return random.choices(found, weights=weights.tolist(), k=1)[0]
 
 
-@lru_cache(maxsize=None)
+@lru_cache()
 def get_model_path(category, model_id):
     model_dir = join(MODEL_PATH, category, str(model_id))
     return [join(model_dir, f) for f in listdir(model_dir) if f.endswith('.urdf')][0]
 
 
-@lru_cache(maxsize=None)
+@lru_cache()
 def get_pointcloud_path(category, model_id):
     model_path = get_model_path(category, model_id)
     return join(dirname(model_path), 'pointcloud.ply')
 
 
-@lru_cache(maxsize=None)
+@lru_cache()
 def get_model_ids(category):
     if category in models:
         return models[category]['models']
@@ -215,7 +218,7 @@ def get_instance_name(path):
     return None
 
 
-@lru_cache(maxsize=None)
+@lru_cache()
 def get_model_natural_extent(model_path, c=None):
     """" store and load the aabb when scale = 1, so it's easier to scale according to given range """
     data_file = join(dirname(__file__), 'aabb_extents.json')
@@ -293,7 +296,7 @@ def load_asset_to_pdsketch(c, category, model_id, scale=None, name=None, floor=N
     with c.disable_rendering():
         gap = 0.01
 
-        if not isinstance(scale, float):
+        if scale is None or isinstance(scale, str):
             scale = sample_model_scale_from_constraint(category, model_id, c, scale)
 
         if len(pos) == 2 and is_array(pos[0], length=3) and is_array(pos[1], length=4):
@@ -367,12 +370,12 @@ def check_model_simulatable(cat, model_id):
     return 'mass' in lines and 'friction' in lines
 
 
-@lru_cache(maxsize=1000)
+@lru_cache()
 def get_grasp_data():
     """ cat_model: grasps """
     grasp_file = join(dirname(__file__), 'grasps', f'hand_grasps_PandaRobot.json')
     data = json.load(open(grasp_file)).values()
-    return {d['name']: d['grasps'] for d in data}
+    return {d['name']: d for d in data}
 
 
 def get_cat_models(cats=CATEGORIES_DIFFUSION_CSP):
@@ -398,17 +401,23 @@ def check_simulatable():
             print(f'{cat} {model_id} does not have grasps stored')
 
 
-@lru_cache(maxsize=1000)
 def get_grasps(name):
+    return get_grasp_data()[name]['grasps']
+
+
+def get_grasps_info(name):
     return get_grasp_data()[name]
 
 
-@lru_cache(maxsize=1000)
 def get_grasp_id(name, nice_grasp):
-    grasps = [nice(x, 2)[-3:] for x in get_grasp_data()[name]]
+    grasps = [nice(x, 2)[-3:] for x in get_grasps(name)]
     if nice_grasp not in grasps:
         return 'x'
     return grasps.index(nice_grasp)
+
+
+def get_grasp_side_by_id(name, grasp_id):
+    return get_grasps_info(name)['grasp_sides'][grasp_id]
 
 
 if __name__ == '__main__':

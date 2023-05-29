@@ -11,6 +11,8 @@ import pybullet as p
 import pybullet_planning as pp
 from collections import namedtuple
 from itertools import product, combinations
+import functools
+err = functools.partial(print, flush=True, file=sys.stderr)
 
 
 GRASPS_DIR = abspath(join(dirname(__file__), 'grasps'))
@@ -545,6 +547,14 @@ def dump_json(db, db_file, indent=2, width=160, sort_dicts=True, **kwargs):
                                **kwargs).replace("'", '"'))
 
 
+def save_grasp_db(db, db_file):
+    keys = {k: v['datetime'] for k, v in db.items()}
+    keys = sorted(keys.items(), key=lambda x: x[1])
+    db = {k: db[k] for k, v in keys}
+    if isfile(db_file): os.remove(db_file)
+    dump_json(db, db_file, sort_dicts=False)
+
+
 def add_grasp_in_db(db, db_file, instance_name, grasps, name=None, scale=None, grasp_sides=None):
     if instance_name is None: return
 
@@ -571,11 +581,7 @@ def add_grasp_in_db(db, db_file, instance_name, grasps, name=None, scale=None, g
         }
         if grasp_sides is not None:
             db[instance_name]['grasp_sides'] = grasp_sides
-    keys = {k: v['datetime'] for k, v in db.items()}
-    keys = sorted(keys.items(), key=lambda x: x[1])
-    db = {k: db[k] for k, v in keys}
-    if isfile(db_file): os.remove(db_file)
-    dump_json(db, db_file, sort_dicts=False)
+    save_grasp_db(db, db_file)
     print('\n    bullet_utils.add_grasp_in_db saved', instance_name, '\n')
 
 
@@ -785,8 +791,59 @@ CollisionInfo = namedtuple('CollisionInfo',
                            '''.split())
 
 
-def get_contact_points(cid, **kwargs):
-    return [CollisionInfo(*info) for info in p.getContactPoints(physicsClientId=cid, **kwargs)]
+CollisionPair = namedtuple('Collision', ['body', 'links'])
+
+
+def get_closest_points(cid, body1, body2, link1=None, link2=None, max_distance=pp.MAX_DISTANCE, use_aabb=False):
+    if use_aabb and not pp.aabb_overlap(get_buffered_aabb(body1, link1, max_distance=max_distance/2.),
+                                        get_buffered_aabb(body2, link2, max_distance=max_distance/2.)):
+        return []
+    if (link1 is None) and (link2 is None):
+        results = p.getClosestPoints(bodyA=body1, bodyB=body2, distance=max_distance, physicsClientId=cid)
+    elif link2 is None:
+        results = p.getClosestPoints(bodyA=body1, bodyB=body2, linkIndexA=link1,
+                                     distance=max_distance, physicsClientId=cid)
+    elif link1 is None:
+        results = p.getClosestPoints(bodyA=body1, bodyB=body2, linkIndexB=link2,
+                                     distance=max_distance, physicsClientId=cid)
+    else:
+        results = p.getClosestPoints(bodyA=body1, bodyB=body2, linkIndexA=link1, linkIndexB=link2,
+                                     distance=max_distance, physicsClientId=cid)
+    if results is None:  ## after reinstalling pybullet, problems occur
+        return []
+    return [CollisionInfo(*info) for info in results]
+
+
+def parse_body(body, link=None):
+    return body if isinstance(body, tuple) else CollisionPair(body, link)
+
+
+def get_buffered_aabb(body, link=None, max_distance=pp.MAX_DISTANCE, **kwargs):
+    if link is None:
+        body, links = parse_body(body, link=link)
+    else:
+        links = [link]
+    return buffer_aabb(pp.aabb_union(get_aabbs(body, links=links, **kwargs)), buffer=max_distance)
+
+
+def buffer_aabb(aabb, buffer):
+    if (aabb is None) or (buffer is None) or (np.isscalar(buffer) and (buffer == 0.)):
+        return aabb
+    extent = pp.get_aabb_extent(aabb)
+    if np.isscalar(buffer):
+        buffer = buffer * np.ones(len(extent))
+    new_extent = np.add(2*buffer, extent)
+    center = pp.get_aabb_center(aabb)
+    return aabb_from_extent_center(new_extent, center)
+
+
+def pairwise_link_collision(cid, body1, link1, body2, link2=pp.BASE_LINK, **kwargs):
+    return len(get_closest_points(cid, body1, body2, link1=link1, link2=link2, **kwargs)) != 0
+
+
+def body_collision(cid, body1, body2, **kwargs):
+    results = get_closest_points(cid, body1, body2, **kwargs)
+    return len(results) != 0
 
 
 ##########################################################################################
@@ -846,7 +903,7 @@ def load_body_five_sides(c, body):
     aabb = get_aabb(c.client_id, body)
     w, l, h = pp.get_aabb_extent(aabb)
     x, y, z = pp.get_aabb_center(aabb)
-    t = 0.005
+    t = 0.001
     boxes = [
         ('z+', (w, l, t), (x, y, z + h / 2 - t)),
         ('y+', (w, t, h), (x, y + l / 2 - t, z)),
@@ -869,6 +926,7 @@ def load_body_five_sides(c, body):
 def remove_body_five_sides(c, all_sides):
     for side in all_sides:
         c.remove_body(side)
+    return False
 
 
 def get_grasp_sides(c, name, robot, body, grasps):
@@ -905,12 +963,19 @@ def get_grasp_sides(c, name, robot, body, grasps):
             all_sides = load_body_five_sides(c, body)
 
         for side, label in all_sides.items():
-            contacts = get_contact_points(cid, bodyA=robot.panda, bodyB=side)
-            # contacts = [ct for ct in contacts if ct.contactFlag == 1]
+            d = {'x': 0, 'y': 1, 'z': 2}[label[0]]
+            contacts = []
+            for link_name in ['leftfinger', 'rightfinger', 'hand']:
+                link = c.w.link_names[f'panda/panda_{link_name}'].link_id
+                contacts += get_closest_points(cid, robot.panda, side, link)
+            # contacts = [ct for ct in contacts if ct[3] < 0.01]
             if len(contacts) > 0:
-                grasp_sides.append(label)
+                normals_on_b = [ct.contactNormalOnB[d] for ct in contacts]
+                normal_on_b = sum(normals_on_b) / len(normals_on_b)
+                grasp_sides.append([label, round(normal_on_b, 3)])
         all_grasp_sides.append(grasp_sides)
-
+    err(all_grasp_sides)
+    remove_body_five_sides(c, all_sides)
     return all_grasp_sides
 
 
