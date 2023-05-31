@@ -208,6 +208,17 @@ def aabb_from_points(points):
     return pp.AABB(np.min(points, axis=0), np.max(points, axis=0))
 
 
+def aabb_from_extent_center(extent, center):
+    if center is None:
+        center = np.zeros(len(extent))
+    else:
+        center = np.array(center)
+    half_extent = np.array(extent) / 2.
+    lower = center - half_extent
+    upper = center + half_extent
+    return pp.AABB(lower, upper)
+
+
 def get_all_links(cid, body):
     return [pp.BASE_LINK] + list(get_links(cid, body))
 
