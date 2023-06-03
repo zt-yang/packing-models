@@ -1148,7 +1148,7 @@ def rotate_180(array):
             out[i, N-1-j] = array[M-1-i, j]
 
 
-def take_bullet_image(cid, camera_pose, target_pose, png_name=None, tf=None):
+def take_bullet_image(cid, camera_pose, target_pose, png_name=None, tf='rot180'):
     rgb = get_bullet_image(cid, camera_pose, target_pose)
     if tf == 'rot180':
         rgb = np.rot90(rgb, 2)
@@ -1189,6 +1189,18 @@ def save_image(image, png_name):
     #     plt.show()
     # else:
     #     plt.close()
+
+
+def images_to_gif(img_arrs, gif_file, repeat=1, crop=None):
+    import imageio
+    with imageio.get_writer(gif_file, mode='I') as writer:
+        for img in img_arrs:
+            if crop is not None:
+                left, top, right, bottom = crop
+                img = img[top:bottom, left:right]
+            for i in range(repeat):
+                writer.append_data(img)
+    return gif_file
 
 
 def merge_images(before, after, png_name):
