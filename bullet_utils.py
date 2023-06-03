@@ -1214,7 +1214,7 @@ def merge_images(before, after, png_name):
 ######################################################################################
 
 
-def parallel_processing(process, inputs, parallel):
+def parallel_processing(process, inputs, parallel, debug=True):
     start_time = time.time()
     num_cases = len(inputs)
 
@@ -1233,5 +1233,6 @@ def parallel_processing(process, inputs, parallel):
         for i in range(num_cases):
             outputs.append(process(inputs[i]))
 
-    print(f'went through {num_cases} run_dirs (parallel={parallel}) in {round(time.time() - start_time, 3)} sec')
+    if debug:
+        print(f'went through {num_cases} run_dirs (parallel={parallel}) in {round(time.time() - start_time, 3)} sec')
     return outputs
