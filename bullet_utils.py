@@ -73,6 +73,14 @@ def get_visual_data(cid, body, link=pp.BASE_LINK):
     list(filter(lambda d: d.linkIndex == link, visual_data))
 
 
+def get_bodies(cid):
+    return [p.getBodyUniqueId(i, physicsClientId=cid)
+            for i in range(p.getNumBodies(physicsClientId=cid))]
+
+
+#################################
+
+
 def equal_float(a, b, epsilon=0.0):
     return abs(a - b) <= epsilon
 
@@ -1214,7 +1222,7 @@ def merge_images(before, after, png_name):
 ######################################################################################
 
 
-def parallel_processing(process, inputs, parallel, debug=True):
+def parallel_processing(process, inputs, parallel, debug=False):
     start_time = time.time()
     num_cases = len(inputs)
 
