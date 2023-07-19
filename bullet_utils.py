@@ -674,6 +674,25 @@ def set_gripper_pose(c, body, robot, grasp_pose, try_length=False):
     return None
 
 
+def create_attachment(c, body, container, body_pose=None):
+    if body_pose is None:
+        body_pose = get_pose(c.client_id, body)
+    container_pose = get_pose(c.client_id, container)
+    grasp_pose = pp.multiply(pp.invert(container_pose), body_pose, ((0, 0, 0), pp.quat_from_euler((np.pi/2, 0, np.pi/2))))
+    c.p.createConstraint(
+        parentBodyUniqueId=container,
+        parentLinkIndex=-1,
+        childBodyUniqueId=body,
+        childLinkIndex=0,
+        jointType=p.JOINT_FIXED,
+        jointAxis=(0, 0, 0),
+        parentFramePosition=grasp_pose[0],
+        parentFrameOrientation=grasp_pose[1],
+        childFramePosition=(0, 0, 0),
+        childFrameOrientation=(0, 0, 0)
+    )
+
+
 def get_grasp_poses(c, robot, body, instance_name='test', link=None, grasp_length=0.02,
                     HANDLE_FILTER=False, visualize=False, verbose=True, faces=None):
     cid = c.client_id
